@@ -1,0 +1,32 @@
+﻿<!DOCTYPE html>
+<html lang="en" class="min-h-screen">
+
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <base href="/"/>
+    @* <link rel="stylesheet" href="bootstrap/bootstrap.min.css"/> *@
+    <link rel="stylesheet" href="app.css"/>
+    <link rel="stylesheet" href="ZoaReference.styles.css"/>
+    <link rel="icon" type="image/png" href="favicon.png"/>
+    
+    <link rel="stylesheet" href="css/styles.css" asp-append-version="true" />
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Public+Sans&display=swap" rel="stylesheet"> 
+    
+    <script>
+        window.SetFocusToElement = (element) => {
+            element.focus();
+        };
+    </script>
+    <HeadOutlet/>
+</head>
+
+<body class="bg-slate-800 text-gray-100 min-h-screen">
+<Routes/>
+<script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>

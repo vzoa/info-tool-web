@@ -1,0 +1,61 @@
+﻿@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.AspNetCore.Components.Web
+@using ZoaReference.Features.VnasData.Models
+@using ZoaReference.Features.VnasData.Services
+@using Microsoft.JSInterop
+
+@inject CachedVnasDataService VnasData
+@inject IJSRuntime Js
+
+@attribute [RenderModeServer]
+@page "/videomaps"
+
+<input @ref="@_input" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" type="text" @bind="_filterText" @bind:event="oninput" placeholder="Search" />
+<div class="text-s">
+    <QuickGrid Items="@FilteredMaps">
+        <PropertyColumn Title="STARS ID" Property="@(m => m.StarsId)" IsDefaultSortColumn Sortable="true" />
+        <PropertyColumn Title="Name" Property="@(m => m.ShortName)" Sortable="true" />
+    </QuickGrid>
+</div>
+
+@code {
+    private ICollection<VideoMap> _maps = new List<VideoMap>();
+    private IQueryable<VideoMap> MapsQueryable => _maps.AsQueryable();
+    
+    private readonly GridSort<VideoMap> _sortById = GridSort<VideoMap>
+        .ByAscending(p => p.StarsId);
+    
+    private ElementReference _input;
+    
+    private IQueryable<VideoMap> FilteredMaps
+    {
+        get { return MapsQueryable.Where(m => (m.StarsId != 0) && ContainsFilterString(m, _filterText)); }
+    }
+
+    private string _filterText = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var fetchedMaps = await VnasData.GetArtccVideoMaps("ZOA");
+        _maps = fetchedMaps is not null ? fetchedMaps.ToList() : new List<VideoMap>();
+    }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Js.InvokeVoidAsync("SetFocusToElement", _input);
+        }
+    }
+    
+    private static bool ContainsFilterString(VideoMap m, string s)
+    {
+        if (string.IsNullOrEmpty(s))
+        {
+            return true;
+        }
+        return m.ShortName.Contains(s, StringComparison.OrdinalIgnoreCase)
+               || m.StarsId.ToString().Contains(s, StringComparison.OrdinalIgnoreCase);
+    }
+}
+

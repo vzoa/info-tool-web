@@ -1,0 +1,15 @@
+﻿@inherits LayoutComponentBase
+
+<div class="flex flex-col min-h-screen">
+    <NavMenu />
+    <SectionOutlet SectionName="sub-nav" @rendermode="@RenderMode.Server" />
+    <main class="pt-5 px-2 grow flex flex-col">
+        @Body
+    </main>
+</div>
+
+<div id="blazor-error-ui">
+    An unhandled error has occurred.
+    <a href="" class="reload">Reload</a>
+    <a class="dismiss">🗙</a>
+</div>

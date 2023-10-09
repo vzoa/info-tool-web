@@ -1,0 +1,144 @@
+﻿@using Microsoft.Extensions.Options
+@using ZoaReference.Features.Charts.Services
+@using ZoaReference.Features.Charts.Models
+
+@inject AviationApiChartService AviationApiChartService
+@inject IOptionsMonitor<AppSettings> AppSettings
+
+@attribute [RenderModeServer]
+@page "/charts/{airportId?}"
+
+<SectionContent SectionName="sub-nav">
+    <div class="bg-slate-900 flex items-center gap-2 px-2 py-0.5">
+        @foreach (var airport in _airports)
+        {
+            <button class="@MakeAirportButtonClass(airport)" @onclick="() => UpdateCharts(airport.Id)">@airport.Id[1..]</button>
+        }
+    </div>
+</SectionContent>
+
+<div class="flex grow">
+    <div class="w-1/3">
+        <div class="flex flex-wrap justify-start items-start">
+            @foreach (var chart in _charts)
+            {
+                <button class="@MakeChartButtonClass(chart)" @onclick="() => UpdateDisplayedChart(chart)">@chart.ChartName</button>
+            }
+        </div>
+    </div>
+    <div class="w-2/3">
+        @if (_displayedChart is not null)
+        {
+            @if (_displayedChart.Pages.Count > 1)
+            {
+                <div class="flex gap-2 items-center text-xs mb-3">
+                    @foreach (var chartPage in _displayedChart.Pages.OrderBy(p => p.PageNumber))
+                    {
+                        <button class="@MakePageButtonClass(chartPage)" @onclick="() => UpdateDisplayedChartPage(chartPage)">@($"Pg. {chartPage.PageNumber}")</button>
+                    }
+                </div>
+            }
+            <object class="pt-1 w-full h-full" type="application/pdf" data="@_displayedChartPage?.PdfPath"></object>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string? AirportId { get; set; }
+    private string _airportId = "";
+    
+    private Chart? _displayedChart;
+    private ChartPage? _displayedChartPage;
+    
+    private ICollection<Chart> _charts = new List<Chart>();
+    private List<Airport> _airports = new();
+    
+    protected override async Task OnInitializedAsync()
+    {
+        _airportId = AirportId ?? string.Empty;
+        if (!string.IsNullOrEmpty(_airportId))
+        {
+            await UpdateCharts(_airportId);
+            StateHasChanged();
+        }
+
+        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Bravos)
+        {
+            _airports.Add(new Airport(airport, AirportType.Bravo));
+        }
+        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Charlies)
+        {
+            _airports.Add(new Airport(airport, AirportType.Charlie));
+        }
+        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Deltas)
+        {
+            _airports.Add(new Airport(airport, AirportType.Delta));
+        }
+    }
+    
+    private async Task UpdateCharts(string id)
+    {
+        _airportId = id;
+        var charts = await AviationApiChartService.GetChartsForId(id);
+        _charts = charts;
+    }
+
+    private void UpdateDisplayedChart(Chart chart)
+    {
+        _displayedChart = chart;
+        _displayedChartPage = chart.Pages.OrderBy(p => p.PageNumber).First();
+    }
+    
+    private void UpdateDisplayedChartPage(ChartPage page) => _displayedChartPage = page;
+
+    private string MakeChartButtonClass(Chart chart)
+    {
+        const string baseClass = "hover:bg-gray-700 border p-1 m-1 cursor-pointer text-xs w-32 h-12";
+        var borderColor = chart.ChartCode switch 
+        {
+            "APD" => "border-green-500",
+            "MIN" => "border-orange-500",
+            "LAH" => "border-yellow-500",
+            "HOT" => "border-red-500",
+            "STAR" => "border-sky-500",
+            "IAP" => "border-violet-500",
+            "DP" => "border-pink-500",
+            _ => "border-gray-600"
+        };
+        var isSelected = (_displayedChart?.ChartName == chart.ChartName) ? "bg-gray-700 font-bold" : "";
+
+        return string.Join(" ", baseClass, borderColor, isSelected);
+    }
+    
+    private string MakePageButtonClass(ChartPage page)
+    {
+        const string baseClass = "hover:bg-gray-700 border border-gray-600 p-1 m-1 cursor-pointer";
+        var isSelected = (page.PdfPath == _displayedChartPage?.PdfPath) ? "bg-gray-700 font-bold" : "";
+        return string.Join(" ", baseClass, isSelected);
+    }
+
+    private enum AirportType
+    {
+        Bravo,
+        Charlie,
+        Delta,
+        Other
+    }
+
+    private record struct Airport(string Id, AirportType Type);
+
+    private string MakeAirportButtonClass(Airport airport)
+    {
+        const string baseClass = "p-1";
+        var textColor = airport.Type switch
+        {
+            AirportType.Bravo => "text-orange-500",
+            AirportType.Charlie => "text-sky-400",
+            AirportType.Delta => "text-gray-300",
+            _ => "text-red-300"
+        };
+        var isSelected = airport.Id == _airportId ? "underline decoration-2 underline-offset-4 bg-gray-700" : "";
+        return string.Join(" ", baseClass, textColor, isSelected);
+    }
+}

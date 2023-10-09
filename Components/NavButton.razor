@@ -1,0 +1,21 @@
+﻿<li>
+    <NavLink href="@Href"
+             Match="@Match"
+             class="mx-1.5 whitespace-nowrap p-2 transition-colors hover:text-gray-100"
+             ActiveClass="underline decoration-2 underline-offset-4 text-gray-100 decoration-orange-600">
+        @ChildContent
+    </NavLink>
+</li>
+
+@code {
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string Href { get; set; } = string.Empty;
+
+    [Parameter]
+    public NavLinkMatch Match { get; set; } = NavLinkMatch.All;
+
+}
