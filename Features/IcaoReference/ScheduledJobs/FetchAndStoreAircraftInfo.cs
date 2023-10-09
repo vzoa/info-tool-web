@@ -60,7 +60,7 @@ public class FetchAndStoreAircraftInfo(ILogger<FetchAndStoreAircraftInfo> logger
             Map(m => m.IcaoWakeTurbulenceCategory).Name("WTC");
             Map(m => m.FaaEngineNumberType).Name("Engine Number-Type");
             Map(m => m.FaaWeightClass).Name("FAA Weight Class");
-            Map(m => m.ConslidatedWakeTurbulenceCategory).Name("CWT");
+            Map(m => m.ConsolidatedWakeTurbulenceCategory).Name("CWT");
             Map(m => m.SameRunwaySeparationCategory).Name("SRS");
             Map(m => m.LandAndHoldShortGroup).Name("LAHSO");
         }

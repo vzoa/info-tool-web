@@ -29,17 +29,10 @@
     </div>
 }
 
-@foreach (var message in _events)
-{
-    <div>@message</div>
-}
-
 @code {
     private readonly string[] _airports = { "KSFO", "KSJC", "KRNO", "KOAK", "KSMF" };
     private IEnumerable<Models.Atis> _atisEnumerable = Enumerable.Empty<Models.Atis>();
     private static string GetIssueTimeString(Models.Atis atis) => atis.IssueTime.ToString("HH:mm");
-
-    private List<string> _events = new();
     
     protected override void OnInitialized()
     {
@@ -50,13 +43,11 @@
     
     private void UpdateNewAirport(object? sender, NewAirportAddedArgs e)
     {
-        _events.Add($"Updated new airport {e.Id}");
         UpdateDisplayedAtis();
     }
 
     private void UpdateNewLetter(object? sender, NewInfoLetterArgs e)
     {
-        _events.Add($"Updated letter for {e.Id}");
         UpdateDisplayedAtis();
     }
 

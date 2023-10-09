@@ -4,6 +4,10 @@ namespace ZoaReference.Features.IcaoReference.Repositories;
 
 public class AirportRepository
 {
+    public IEnumerable<Airport> AllAirports => _dictionary.Values;
+
+    public IEnumerable<string> AllAirportIds => _dictionary.Keys;
+    
     private readonly Dictionary<string, Airport> _dictionary = new();
 
     public bool TryAddAirport(string key, Airport airport)

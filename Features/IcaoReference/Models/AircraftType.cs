@@ -11,7 +11,7 @@ public class AircraftType
     public string IcaoWakeTurbulenceCategory { get; set; }
     public string FaaEngineNumberType { get; set; }
     public string FaaWeightClass { get; set; }
-    public string ConslidatedWakeTurbulenceCategory { get; set; }
+    public string ConsolidatedWakeTurbulenceCategory { get; set; }
     public string SameRunwaySeparationCategory { get; set; }
     public string LandAndHoldShortGroup { get; set; }
 
@@ -28,7 +28,7 @@ public class AircraftType
         IcaoWakeTurbulenceCategory = icaoWakeTurbulenceCategory;
         FaaEngineNumberType = faaEngineNumberType;
         FaaWeightClass = faaWeightClass;
-        ConslidatedWakeTurbulenceCategory = consolidatedWakeTurbulenceCategory;
+        ConsolidatedWakeTurbulenceCategory = consolidatedWakeTurbulenceCategory;
         SameRunwaySeparationCategory = sameRunwaySeparationCategory;
         LandAndHoldShortGroup = landAndHoldShortGroup;
     }

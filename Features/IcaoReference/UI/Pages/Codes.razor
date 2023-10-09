@@ -1,0 +1,154 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using ZoaReference.Features.IcaoReference.Repositories
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using ZoaReference.Features.IcaoReference.Models
+
+@inject AirlineRepository Airlines
+@inject AirportRepository Airports
+@inject AircraftTypeRepository AircraftTypes
+@attribute [RenderModeServer]
+@page "/codes"
+
+<div class="flex flex-col text-s gap-8">
+    <div>
+        <EditForm Model="@_airlineForm" OnValidSubmit="@AirlineSubmit">
+            <DataAnnotationsValidator/>
+            <InputText @bind-Value="_airlineForm!.Search" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Airline 3-letter code"/>
+            <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search Airlines</button>
+            <ValidationMessage For="() => _airlineForm.Search"/>
+        </EditForm>
+
+        <QuickGrid Items="@_displayedAirlines.AsQueryable()">
+            <PropertyColumn Property="@(p => p.IcaoId)" Title="ICAO ID" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.Callsign)" Title="Telephony" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.Name)" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.Country)" Sortable="true"/>
+        </QuickGrid>
+    </div>
+    
+    <div>
+        <EditForm Model="@_airportForm" OnValidSubmit="@AirportSubmit">
+            <DataAnnotationsValidator/>
+            <InputText @bind-Value="_airportForm!.Search" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Airport code"/>
+            <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search Airports</button>
+            <ValidationMessage For="() => _airportForm.Search"/>
+        </EditForm>
+
+        <QuickGrid Items="@_displayedAirports.AsQueryable()">
+            <PropertyColumn Property="@(p => p.IcaoId)" Title="ICAO ID" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.LocalId)" Title="Local ID" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.Name)" Sortable="true"/>
+        </QuickGrid>
+    </div>
+    
+    <div>
+        <EditForm Model="@_aircraftForm" OnValidSubmit="@AircraftSubmit">
+            <DataAnnotationsValidator/>
+            <InputText @bind-Value="_aircraftForm!.Search" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Aircraft code / name"/>
+            <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search Aircraft</button>
+            <ValidationMessage For="() => _aircraftForm.Search"/>
+        </EditForm>
+
+        <QuickGrid Items="@_displayedAircraft.AsQueryable()">
+            <PropertyColumn Property="@(p => p.IcaoId)" Title="Type Designator" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.Manufacturer)" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.Model)" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.FaaEngineNumberType)" Title="Engine" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.FaaWeightClass)" Title="FAA Weight" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.ConsolidatedWakeTurbulenceCategory)" Title="CWT" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.SameRunwaySeparationCategory)" Title="SRS" Sortable="true" />
+            <PropertyColumn Property="@(p => p.LandAndHoldShortGroup)" Title="LAHSO" Sortable="true" />
+        </QuickGrid>
+    </div>
+</div>
+
+@* <table> *@
+@*     @foreach (var airline in _displayedAirlines) *@
+@*     { *@
+@*         <tr> *@
+@*             <td>@airline.IcaoId</td> *@
+@*             <td>@airline.Callsign</td> *@
+@*             <td>@airline.Name</td> *@
+@*             <td>@airline.Country</td> *@
+@*         </tr> *@
+@*     } *@
+@* </table> *@
+
+
+
+@code {
+
+    private AirlineForm? _airlineForm = new();
+    private AirportForm? _airportForm = new();
+    private AircraftForm? _aircraftForm = new();
+
+    private IEnumerable<Airline> _displayedAirlines = Enumerable.Empty<Airline>();
+    private IEnumerable<Airport> _displayedAirports = Enumerable.Empty<Airport>();
+    private IEnumerable<AircraftType> _displayedAircraft = Enumerable.Empty<AircraftType>();
+
+    private class AirlineForm
+    {
+        [Required]
+        public string Search { get; set; }
+    }
+
+    private void AirlineSubmit()
+    {
+        var trimmed = _airlineForm.Search.Trim();
+        if (trimmed.Length == 3)
+        {
+            _displayedAirlines = Airlines.AllAirlines
+                .Where(a => a.IcaoId.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            _displayedAirlines = Airlines.AllAirlines
+                .Where(a => a.Callsign.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+    
+    private class AirportForm
+    {
+        [Required]
+        public string Search { get; set; }
+    }
+    
+    private void AirportSubmit()
+    {
+        var trimmed = _airportForm.Search.Trim();
+        if (trimmed.Length is 3 or 4)
+        {
+            _displayedAirports = Airports.AllAirports
+                .Where(a => a.IcaoId.Equals(trimmed, StringComparison.OrdinalIgnoreCase)
+                            || a.LocalId.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            _displayedAirports = Airports.AllAirports
+                .Where(a => a.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+    
+    private class AircraftForm
+    {
+        [Required]
+        public string Search { get; set; }
+    }
+    
+    private void AircraftSubmit()
+    {
+        var trimmed = _aircraftForm.Search.Trim();
+        if (trimmed.Length is 3 or 4)
+        {
+            _displayedAircraft = AircraftTypes.AllAircraftTypes
+                .Where(a => a.IcaoId.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            _displayedAircraft = AircraftTypes.AllAircraftTypes
+                .Where(a => a.Model.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+}

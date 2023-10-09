@@ -13,7 +13,6 @@
 
     <ItemGroup>
       <Folder Include="Features\Charts\UI\Components\" />
-      <Folder Include="Features\IcaoReference\UI\" />
       <Folder Include="Features\Routes\UI\" />
     </ItemGroup>
 
