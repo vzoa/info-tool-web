@@ -7,7 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
-    .AddServerComponents();
+    .AddInteractiveServerComponents();
 
 // Add the global App Settings class to DI container
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(AppSettings.SectionKeyName));
@@ -22,6 +22,8 @@ builder.Services.AddFeatureServices();
 builder.Services.AddScheduler();
 
 var app = builder.Build();
+
+app.UseAntiforgery();
 
 // Scan for and add schedulers
 app.Services.UseSchedulers();
@@ -39,6 +41,6 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.MapRazorComponents<App>()
-    .AddServerRenderMode();
+    .AddInteractiveServerRenderMode();
 
 app.Run();

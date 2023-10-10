@@ -7,7 +7,7 @@
 @inject CachedVnasDataService VnasData
 @inject IJSRuntime Js
 
-@attribute [RenderModeServer]
+@attribute [RenderModeInteractiveServer]
 @page "/positions"
 
 <input @ref=@_input class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5  mb-2 ml-1 w-40" type="text" @bind="_filterText" @bind:event="oninput" placeholder="Search" />
