@@ -1,3 +1,8 @@
 ﻿@tailwind base;
+
+.validation-message {
+    @apply text-orange-600;
+}
+
 @tailwind components;
 @tailwind utilities;

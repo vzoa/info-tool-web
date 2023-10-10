@@ -12,7 +12,9 @@ public class RoutesModule : IServiceConfigurator, ISchedulerConfigurator
     {
         services.AddSingleton<FlightAwareRouteService>();
         services.AddSingleton<AliasRouteRuleRepository>();
+        services.AddSingleton<LoaRuleRepository>();
         services.AddTransient<FetchAndStoreAliasRoutes>();
+        services.AddTransient<FetchAndStoreLoaRules>();
         return services;
     }
     
@@ -22,6 +24,10 @@ public class RoutesModule : IServiceConfigurator, ISchedulerConfigurator
         return scheduler =>
         {
             scheduler.Schedule<FetchAndStoreAliasRoutes>()
+                .HourlyAt(rnd.Next(60))
+                .RunOnceAtStart();
+            
+            scheduler.Schedule<FetchAndStoreLoaRules>()
                 .HourlyAt(rnd.Next(60))
                 .RunOnceAtStart();
         };

@@ -41,6 +41,7 @@ public class AppSettings
         public string VatsimApiEndpoint { get; set; } = string.Empty;
         public string AliasTextFile { get; set;} = string.Empty;
         public string VatspyData { get; set; } = string.Empty;
+        public string LoaFile { get; set; } = string.Empty;
     }
 
     public class ArtccAirportsSettings

@@ -12,11 +12,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Features\Charts\UI\Components\" />
-      <Folder Include="Features\Routes\UI\" />
-    </ItemGroup>
-
-    <ItemGroup>
       <PackageReference Include="AngleSharp" Version="1.0.6-alpha-321" />
       <PackageReference Include="Coravel" Version="5.0.2" />
       <PackageReference Include="CsvHelper" Version="30.0.1" />

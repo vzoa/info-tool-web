@@ -20,6 +20,10 @@
         window.SetFocusToElement = (element) => {
             element.focus();
         };
+        window.SetFocusToId = (id) => {
+            const element = document.getElementById(id);
+            element.focus();
+        };
     </script>
     <HeadOutlet/>
 </head>
@@ -30,3 +34,7 @@
 </body>
 
 </html>
+
+@code {
+    
+}

@@ -1,0 +1,16 @@
+﻿@using ZoaReference.Features.Routes.Models
+
+@switch (AircraftType)
+{
+    case AliasRouteRule.RouteAircraftType.Jet | AliasRouteRule.RouteAircraftType.Turboprop | AliasRouteRule.RouteAircraftType.Prop:
+        <span class="text-gray-500">Any</span>
+        break;
+    default:
+        <span class="text-yellow-500">@AircraftType</span>
+        break;
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public AliasRouteRule.RouteAircraftType AircraftType { get; set; } = AliasRouteRule.RouteAircraftType.Jet | AliasRouteRule.RouteAircraftType.Turboprop | AliasRouteRule.RouteAircraftType.Prop;
+}
