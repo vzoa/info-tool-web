@@ -4,6 +4,7 @@
 
 @inject AviationApiChartService AviationApiChartService
 @inject IOptionsMonitor<AppSettings> AppSettings
+@inject ProtectedSessionStorage ProtectedSessionStore
 
 @attribute [RenderModeInteractiveServer]
 @page "/charts/{airportId?}"
@@ -50,6 +51,7 @@
     
     private Chart? _displayedChart;
     private ChartPage? _displayedChartPage;
+
     
     private ICollection<Chart> _charts = new List<Chart>();
     private List<Airport> _airports = new();
@@ -60,7 +62,6 @@
         if (!string.IsNullOrEmpty(_airportId))
         {
             await UpdateCharts(_airportId);
-            StateHasChanged();
         }
 
         foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Bravos)
@@ -77,6 +78,23 @@
         }
     }
     
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && AirportId is null)
+        {
+            var savedStateTask = await ProtectedSessionStore.GetAsync<ChartState>("chartState");
+            if (!savedStateTask.Success || savedStateTask.Value is null)
+            {
+                return;
+            }
+            
+            await UpdateCharts(savedStateTask.Value.AirportId);
+            _displayedChart = savedStateTask.Value.Chart;
+            _displayedChartPage = savedStateTask.Value.Page;
+            StateHasChanged();
+        }
+    }
+    
     private async Task UpdateCharts(string id)
     {
         _airportId = id;
@@ -84,13 +102,18 @@
         _charts = charts;
     }
 
-    private void UpdateDisplayedChart(Chart chart)
+    private async Task UpdateDisplayedChart(Chart? chart)
     {
+        if (chart is null) return;
         _displayedChart = chart;
-        _displayedChartPage = chart.Pages.OrderBy(p => p.PageNumber).First();
+        await UpdateDisplayedChartPage(chart.Pages.OrderBy(p => p.PageNumber).First());
     }
-    
-    private void UpdateDisplayedChartPage(ChartPage page) => _displayedChartPage = page;
+
+    private async Task UpdateDisplayedChartPage(ChartPage page)
+    {
+        _displayedChartPage = page;
+        await ProtectedSessionStore.SetAsync("chartState", new ChartState(_airportId, _displayedChart, _displayedChartPage));
+    }
 
     private string MakeChartButtonClass(Chart chart)
     {
@@ -140,5 +163,12 @@
         };
         var isSelected = airport.Id == _airportId ? "underline decoration-2 underline-offset-4 bg-gray-700" : "";
         return string.Join(" ", baseClass, textColor, isSelected);
+    }
+
+    private class ChartState(string airportId, Chart? chart, ChartPage? page)
+    {
+        public string AirportId { get; } = airportId;
+        public Chart? Chart { get; } = chart;
+        public ChartPage? Page { get; } = page;
     }
 }
