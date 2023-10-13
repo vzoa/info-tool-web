@@ -7,21 +7,21 @@ public class AliasRouteRule
     public string ArrivalAirport { get; set; }
     public int? ArrivalRunway { get; set; }
     public string Route { get; set; }
-    public RouteAircraftType AllowedAircraftType { get; set; }
+    public RouteAircraftTypes AllowedAircraftTypes { get; set; }
 
-    public static RouteAircraftType StringToType(string typeStr)
+    public static RouteAircraftTypes StringToType(string typeStr)
     {
         return typeStr.ToUpper() switch
         {
-            "J" => RouteAircraftType.Jet,
-            "T" => RouteAircraftType.Turboprop,
-            "P" => RouteAircraftType.Prop,
-            _ => RouteAircraftType.Jet | RouteAircraftType.Turboprop | RouteAircraftType.Prop
+            "J" => RouteAircraftTypes.Jet,
+            "T" => RouteAircraftTypes.Turboprop,
+            "P" => RouteAircraftTypes.Prop,
+            _ => RouteAircraftTypes.Jet | RouteAircraftTypes.Turboprop | RouteAircraftTypes.Prop
         };
     }
 
     [Flags]
-    public enum RouteAircraftType
+    public enum RouteAircraftTypes
     {
         Jet = 1 << 0,
         Turboprop = 1 << 1,

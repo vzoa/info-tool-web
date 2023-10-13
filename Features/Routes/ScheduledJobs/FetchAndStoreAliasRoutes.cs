@@ -57,8 +57,8 @@ public partial class FetchAndStoreAliasRoutes(ILogger<FetchAndStoreAliasRoutes> 
             DepartureRunway = string.IsNullOrEmpty(commandMatch.Groups[2].Value) ? null : int.Parse(commandMatch.Groups[2].Value),
             ArrivalAirport = commandMatch.Groups[3].Value.ToUpper(),
             ArrivalRunway = string.IsNullOrEmpty(commandMatch.Groups[4].Value) ? null : int.Parse(commandMatch.Groups[4].Value),
-            AllowedAircraftType = string.IsNullOrEmpty(commandMatch.Groups[5].Value)
-                ? AliasRouteRule.RouteAircraftType.Jet | AliasRouteRule.RouteAircraftType.Turboprop | AliasRouteRule.RouteAircraftType.Prop
+            AllowedAircraftTypes = string.IsNullOrEmpty(commandMatch.Groups[5].Value)
+                ? AliasRouteRule.RouteAircraftTypes.Jet | AliasRouteRule.RouteAircraftTypes.Turboprop | AliasRouteRule.RouteAircraftTypes.Prop
                 : AliasRouteRule.StringToType(commandMatch.Groups[5].Value),
             Route = routeMatch.Groups[2].Value.Trim()
         };

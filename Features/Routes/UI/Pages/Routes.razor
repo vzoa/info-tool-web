@@ -51,7 +51,7 @@
                     }
                 </TemplateColumn>
                 <TemplateColumn Title="Types">
-                    <FormattedAircraftType AircraftType="@context.AllowedAircraftType" />
+                    <FormattedAircraftType AircraftTypes="@context.AllowedAircraftTypes" />
                 </TemplateColumn>
                 <PropertyColumn Property="@(p => p.Route)" />
             </QuickGrid>
@@ -84,7 +84,7 @@
             <h1 class="text-2xl">Real World Routes</h1>
             @if (_showFlightAwareLoading)
             {
-                <span class="italic">Loading</span>
+                <Spinner />
             }
             else if (_displayedFlightAwareRoutes is not null)
             {

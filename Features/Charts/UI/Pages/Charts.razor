@@ -54,7 +54,7 @@
 
     
     private ICollection<Chart> _charts = new List<Chart>();
-    private List<Airport> _airports = new();
+    private readonly List<Airport> _airports = new();
     
     protected override async Task OnInitializedAsync()
     {
