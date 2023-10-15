@@ -12,6 +12,7 @@ public class AppSettings
     public UrlsSettings Urls { get; set; } = new();
     public ArtccAirportsSettings ArtccAirports { get; set; } = new();
     public string ReferenceBindersDirectoryInWwwroot { get; set; } = string.Empty;
+    public string DocumentsPdfPath { get; set; } = string.Empty;
 
 
     public class CacheTtlSettings
@@ -42,6 +43,7 @@ public class AppSettings
         public string AliasTextFile { get; set;} = string.Empty;
         public string VatspyData { get; set; } = string.Empty;
         public string LoaFile { get; set; } = string.Empty;
+        public string ZoaDocumentsApiEndpoint { get; set; } = string.Empty;
     }
 
     public class ArtccAirportsSettings

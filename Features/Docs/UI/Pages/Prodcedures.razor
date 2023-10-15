@@ -1,0 +1,68 @@
+﻿@using ZoaReference.Features.Docs.Repositories
+@using Microsoft.Extensions.Options
+
+@inject DocumentRepository DocumentRepository
+@inject IOptionsMonitor<AppSettings> AppSettings
+@inject ProtectedSessionStorage ProtectedSessionStore
+
+@attribute [RenderModeInteractiveServer]
+@page "/procedures"
+
+<div>
+    <select @bind="_displayedPdfUrl" @bind:after="UpdateStoredUrl" class="p-2 bg-gray-700 text-gray-100 w-[600px]">
+        @foreach (var category in DocumentRepository.Categories)
+        {
+            <optgroup label="@category.Name" class="text-gray-400">
+                @foreach (var doc in category.Documents)
+                {
+                    <option value="@MakePdfPath(doc.Url)" class="text-gray-100">@doc.Name</option>
+                }
+            </optgroup>
+        }
+    </select>
+</div>
+@if (!string.IsNullOrEmpty(_displayedPdfUrl))
+{
+    <div class="grow flex items-stretch">
+        <div class="w-full mt-2">
+            <object class="pt-1 h-full w-full" type="application/pdf" data="@_displayedPdfUrl"></object>
+        </div>
+    </div>
+}
+
+@code {
+
+    private string _displayedPdfUrl = "";
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var savedStateTask = await ProtectedSessionStore.GetAsync<string>("proceduresPdfUrl");
+            if (!savedStateTask.Success || savedStateTask.Value is null)
+            {
+                return;
+            }
+
+            _displayedPdfUrl = savedStateTask.Value;
+            StateHasChanged();
+        }
+    }
+    
+    private static string GetPdfNameFromUrl(string url)
+    {
+        var uri = new Uri(url);
+        return Path.GetFileName(uri.AbsolutePath);
+    }
+
+    private string MakePdfPath(string url)
+    {
+        var name = GetPdfNameFromUrl(url);
+        return $"{AppSettings.CurrentValue.DocumentsPdfPath}/{name}.pdf";
+    }
+
+    private async Task UpdateStoredUrl()
+    {
+        await ProtectedSessionStore.SetAsync("proceduresPdfUrl", _displayedPdfUrl);
+    }
+}

@@ -10,7 +10,7 @@
 @page "/charts/{airportId?}"
 
 <SectionContent SectionName="sub-nav">
-    <div class="bg-slate-900 flex items-center gap-2 px-2 py-0.5">
+    <div class="bg-slate-900 flex items-center gap-2 px-2 py-0.5 flex-wrap">
         @foreach (var airport in _airports)
         {
             <button class="@MakeAirportButtonClass(airport)" @onclick="() => UpdateCharts(airport.Id)">@airport.Id[1..]</button>
