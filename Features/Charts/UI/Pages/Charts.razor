@@ -99,7 +99,7 @@
     {
         _airportId = id;
         var charts = await AviationApiChartService.GetChartsForId(id);
-        _charts = charts;
+        _charts = charts.OrderBy(GetRankOrder).ToList();
     }
 
     private async Task UpdateDisplayedChart(Chart? chart)
@@ -170,5 +170,20 @@
         public string AirportId { get; } = airportId;
         public Chart? Chart { get; } = chart;
         public ChartPage? Page { get; } = page;
+    }
+
+    private static int GetRankOrder(Chart chart)
+    {
+        return chart.ChartCode switch
+        {
+            "APD" => 0,
+            "MIN" => 1,
+            "LAH" => 2,
+            "HOT" => 3,
+            "STAR" => 4,
+            "IAP" => 5,
+            "DP" => 6,
+            _ => 7
+        };
     }
 }
