@@ -17,8 +17,8 @@
     <div>
         <EditForm Model="@_routeForm" OnValidSubmit="@RouteSubmit">
             <DataAnnotationsValidator />
-            <InputText @bind-Value="_routeForm!.DepartureId" id="departureInput" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Departure ID"/>
-            <InputText @bind-Value="_routeForm!.ArrivalId" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Arrival ID"/>
+            <InputText @bind-Value="_routeForm!.DepartureId" id="departureInput" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Departure ID"/>
+            <InputText @bind-Value="_routeForm!.ArrivalId" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Arrival ID"/>
             <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search Routes</button>
             <ValidationMessage For="() => _routeForm.DepartureId"/>
             <ValidationMessage For="() => _routeForm.ArrivalId"/>

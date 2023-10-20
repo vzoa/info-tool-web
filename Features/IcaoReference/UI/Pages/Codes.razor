@@ -11,7 +11,7 @@
     <div>
         <EditForm Model="@_airlineForm" OnValidSubmit="@AirlineSubmit">
             <DataAnnotationsValidator/>
-            <InputText @bind-Value="_airlineForm!.Search" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Airline 3-letter code"/>
+            <InputText @bind-Value="_airlineForm!.Search" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Airline 3-letter"/>
             <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search Airlines</button>
             <ValidationMessage For="() => _airlineForm.Search"/>
         </EditForm>
@@ -27,7 +27,7 @@
     <div>
         <EditForm Model="@_airportForm" OnValidSubmit="@AirportSubmit">
             <DataAnnotationsValidator/>
-            <InputText @bind-Value="_airportForm!.Search" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Airport code"/>
+            <InputText @bind-Value="_airportForm!.Search" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Airport code"/>
             <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search Airports</button>
             <ValidationMessage For="() => _airportForm.Search"/>
         </EditForm>
@@ -42,7 +42,7 @@
     <div>
         <EditForm Model="@_aircraftForm" OnValidSubmit="@AircraftSubmit">
             <DataAnnotationsValidator/>
-            <InputText @bind-Value="_aircraftForm!.Search" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Aircraft code / name"/>
+            <InputText @bind-Value="_aircraftForm!.Search" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Aircraft code / name"/>
             <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search Aircraft</button>
             <ValidationMessage For="() => _aircraftForm.Search"/>
         </EditForm>
