@@ -129,7 +129,7 @@
             "DP" => "border-pink-500",
             _ => "border-gray-600"
         };
-        var isSelected = (_displayedChart?.ChartName == chart.ChartName) ? "bg-gray-700 font-bold" : "";
+        var isSelected = (_displayedChart?.ChartName == chart.ChartName && _displayedChart?.AirportName == chart.AirportName) ? "bg-gray-700 font-bold" : "";
 
         return string.Join(" ", baseClass, borderColor, isSelected);
     }
