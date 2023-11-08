@@ -13,7 +13,29 @@
     <div class="bg-slate-900 flex items-center gap-2 px-2 py-0.5 flex-wrap">
         @foreach (var airport in _airports)
         {
-            <button class="@MakeAirportButtonClass(airport)" @onclick="() => UpdateCharts(airport.Id)">@airport.Id[1..]</button>
+            <button class="@MakeAirportButtonClass(airport)" @onclick="() => UpdateCharts(airport.Id)">
+                @if (airport.Id.Length == 4 && airport.Id.ToUpper().StartsWith("K"))
+                {
+                    @airport.Id[1..]
+                }
+                else
+                {
+                    @airport.Id
+                }
+            </button>
+        }
+        <button @onclick="() => _airportInputShown = true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
+            </svg>
+        </button>
+        @if (_airportInputShown)
+        {
+            <EditForm Model="@_airportForm" OnValidSubmit="@AirportSubmit">
+                <DataAnnotationsValidator />
+                <InputText @bind-Value="_airportForm!.AirportId" id="departureInput" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-24" placeholder="FAA/ICAO"/>
+                <ValidationMessage For="() => _airportForm.AirportId"/>
+            </EditForm>
         }
     </div>
 </SectionContent>
@@ -51,11 +73,27 @@
     
     private Chart? _displayedChart;
     private ChartPage? _displayedChartPage;
-
     
     private ICollection<Chart> _charts = new List<Chart>();
     private readonly List<Airport> _airports = new();
+
+    private bool _airportInputShown = false;
+    private readonly AirportForm _airportForm = new();
+    private class AirportForm
+    {
+        [Required]
+        [StringLength(4, ErrorMessage = "ID cannot exceed 4 characters.")]
+        public string AirportId { get; set; }
+    }
+
+    private void AirportSubmit()
+    {
+        _airports.Add(new Airport(_airportForm.AirportId.ToUpper(), AirportType.Other));
+        _airportInputShown = false;
+        _airportForm.AirportId = "";
+    }
     
+
     protected override async Task OnInitializedAsync()
     {
         _airportId = AirportId ?? string.Empty;
