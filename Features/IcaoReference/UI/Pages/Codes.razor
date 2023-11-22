@@ -1,11 +1,13 @@
-﻿@using ZoaReference.Features.IcaoReference.Repositories
+﻿@page "/codes"
+@rendermode InteractiveServer
+
+@using ZoaReference.Features.IcaoReference.Repositories
 @using ZoaReference.Features.IcaoReference.Models
 
 @inject AirlineRepository Airlines
 @inject AirportRepository Airports
 @inject AircraftTypeRepository AircraftTypes
-@rendermode InteractiveServer
-@page "/codes"
+
 
 <div class="flex flex-col text-s gap-8">
     <div>

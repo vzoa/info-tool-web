@@ -1,4 +1,7 @@
-﻿@using ZoaReference.Features.IcaoReference.Repositories
+﻿@page "/routes"
+@rendermode InteractiveServer
+
+@using ZoaReference.Features.IcaoReference.Repositories
 @using ZoaReference.Features.Routes.Models
 @using ZoaReference.Features.Routes.Repositories
 @using ZoaReference.Features.Routes.Services
@@ -10,8 +13,6 @@
 @inject AirportRepository Airports
 @inject IJSRuntime Js
 
-@rendermode InteractiveServer
-@page "/routes"
 
 <div class="flex flex-col text-s gap-8">
     <div>

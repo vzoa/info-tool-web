@@ -1,11 +1,12 @@
-﻿@using ZoaReference.Features.VnasData.Models
+﻿@page "/positions"
+@rendermode InteractiveServer
+
+@using ZoaReference.Features.VnasData.Models
 @using ZoaReference.Features.VnasData.Services
 
 @inject CachedVnasDataService VnasData
 @inject IJSRuntime Js
 
-@rendermode InteractiveServer
-@page "/positions"
 
 <input @ref=@_input class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5  mb-2 ml-1 w-40" type="text" @bind="_filterText" @bind:event="oninput" placeholder="Search" />
 <div class="text-s">

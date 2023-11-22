@@ -1,4 +1,7 @@
-﻿@using Microsoft.Extensions.Options
+﻿@page "/charts/{airportId?}"
+@rendermode InteractiveServer
+
+@using Microsoft.Extensions.Options
 @using ZoaReference.Features.Charts.Services
 @using ZoaReference.Features.Charts.Models
 
@@ -6,8 +9,6 @@
 @inject IOptionsMonitor<AppSettings> AppSettings
 @inject ProtectedSessionStorage ProtectedSessionStore
 
-@rendermode InteractiveServer
-@page "/charts/{airportId?}"
 
 <SectionContent SectionName="sub-nav">
     <div class="bg-slate-900 flex items-center gap-2 px-2 py-0.5 flex-wrap">
@@ -87,7 +88,7 @@
         public string AirportId { get; set; }
     }
 
-    private async Task ShowAirportInput()
+    private void ShowAirportInput()
     {
         if (_airportInputShown) return;
         _airportInputShown = true;

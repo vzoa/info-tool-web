@@ -1,10 +1,12 @@
-﻿@using ZoaReference.Features.DigitalAtis.Repositories
+﻿@page "/atis"
+@rendermode InteractiveServer
+
+@implements IDisposable;
+
+@using ZoaReference.Features.DigitalAtis.Repositories
 
 @inject DigitalAtisRepository AtisRepository;
 
-@rendermode InteractiveServer
-@page "/atis"
-@implements IDisposable;
 
 @foreach (var atis in _atisEnumerable)
 {
