@@ -163,15 +163,13 @@
         if (firstRender && AirportId is null)
         {
             var savedStateTask = await ProtectedSessionStore.GetAsync<ChartState>("chartState");
-            if (!savedStateTask.Success || savedStateTask.Value is null)
+            if (savedStateTask is { Success: true, Value: not null })
             {
-                return;
+                await UpdateCharts(savedStateTask.Value.AirportId);
+                _displayedChart = savedStateTask.Value.Chart;
+                _displayedChartPage = savedStateTask.Value.Page;
+                stateUpdated = true;
             }
-            
-            await UpdateCharts(savedStateTask.Value.AirportId);
-            _displayedChart = savedStateTask.Value.Chart;
-            _displayedChartPage = savedStateTask.Value.Page;
-            stateUpdated = true;
         }
 
         if (firstRender)
