@@ -126,7 +126,7 @@
 </div>
 
 @code {
-    private RouteForm _routeForm = new();
+    private readonly RouteForm _routeForm = new();
 
     private AirportPairRouteSummary? _displayedFlightAwareRoutes;
     private IEnumerable<AliasRouteRule> _displayedAliasRouteRules = Enumerable.Empty<AliasRouteRule>();

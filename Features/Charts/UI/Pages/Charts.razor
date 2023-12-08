@@ -4,6 +4,7 @@
 @using Microsoft.Extensions.Options
 @using ZoaReference.Features.Charts.Services
 @using ZoaReference.Features.Charts.Models
+@using System.Text.RegularExpressions
 
 @inject AviationApiChartService AviationApiChartService
 @inject IOptionsMonitor<AppSettings> AppSettings
@@ -34,7 +35,7 @@
         {
             <EditForm Model="@_airportForm" OnValidSubmit="@AirportSubmit">
                 <DataAnnotationsValidator />
-                <InputText @ref="_airportInputReference" @bind-Value="_airportForm!.AirportId" id="airportInput" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-24" placeholder="FAA/ICAO"/>
+                <InputText @ref="_airportInputReference" @bind-Value="_airportForm.AirportId" id="airportInput" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-24" placeholder="FAA/ICAO"/>
                 <ValidationMessage For="() => _airportForm.AirportId"/>
             </EditForm>
         }
@@ -43,10 +44,25 @@
 
 <div class="flex grow">
     <div class="w-1/3">
-        <div class="flex flex-wrap justify-start items-start">
-            @foreach (var chart in _charts)
+        <div class="flex flex-col justify-start items-start gap-y-4">
+            @foreach (var charts in new List<List<Chart>> { _organizedCharts.Info, _organizedCharts.Sid, _organizedCharts.Star })
             {
-                <button class="@MakeChartButtonClass(chart)" @onclick="() => UpdateDisplayedChart(chart)">@chart.ChartName</button>
+                <div class="flex flex-wrap justify-start items-start">
+                    @foreach (var chart in charts)
+                    {
+                        <button class="@MakeChartButtonClass(chart)" @onclick="() => UpdateDisplayedChart(chart)">@chart.ChartName</button>
+                    }
+                </div>
+            }
+            
+            @foreach (var runwayGroup in _organizedCharts.Approach.Keys.Order())
+            {
+                <div class="flex flex-wrap justify-start items-start">
+                    @foreach (var chart in _organizedCharts.Approach[runwayGroup])
+                    {
+                        <button class="@MakeChartButtonClass(chart)" @onclick="() => UpdateDisplayedChart(chart)">@chart.ChartName</button>
+                    }
+                </div>
             }
         </div>
     </div>
@@ -76,9 +92,10 @@
     private ChartPage? _displayedChartPage;
     
     private ICollection<Chart> _charts = new List<Chart>();
-    private readonly List<Airport> _airports = new();
+    private OrganizedCharts _organizedCharts = new() { Info = [], Sid = [], Star = [], Approach = [] };
+    private readonly List<Airport> _airports = [];
 
-    private bool _airportInputShown = false;
+    private bool _airportInputShown;
     private readonly AirportForm _airportForm = new();
     private InputText? _airportInputReference;
     private class AirportForm
@@ -151,6 +168,7 @@
         _airportId = id;
         var charts = await AviationApiChartService.GetChartsForId(id);
         _charts = charts.OrderBy(GetRankOrder).ToList();
+        _organizedCharts = OrganizeCharts(charts);
     }
 
     private async Task UpdateDisplayedChart(Chart? chart)
@@ -236,5 +254,41 @@
             "DP" => 6,
             _ => 7
         };
+    }
+
+    private static string GetGroupKey(Chart chart)
+    {
+        return chart.ChartCode switch
+        {
+            "APD" => "info",
+            "MIN" => "info",
+            "LAH" => "info",
+            "HOT" => "info",
+            "STAR" => "star",
+            "IAP" => "approach",
+            "DP" => "sid",
+            "ODP" => "sid",
+            _ => "info"
+        };
+    }
+
+    private static string GetRunway(Chart chart)
+    {
+        const string runwayRegex = @"RWY [0-3][0-9][LRC]?(?:/[LRC])?(?:/[LRC])?";
+        var match = Regex.Match(chart.ChartName, runwayRegex);
+        return match.Success ? match.Groups[0].Value : "";
+    }
+
+    public record struct OrganizedCharts(List<Chart> Info, List<Chart> Star, List<Chart> Sid, Dictionary<string, List<Chart>> Approach);
+    
+    private static OrganizedCharts OrganizeCharts(IEnumerable<Chart> charts)
+    {
+        var grouped = charts.GroupBy(GetGroupKey).ToDictionary(group => group.Key, group => group.ToList());
+        var info = grouped.TryGetValue("info", out var infoVals) ? infoVals.OrderBy(GetRankOrder).ToList() : [];
+        var star = grouped.TryGetValue("star", out var starVals) ? starVals : [];
+        var sid = grouped.TryGetValue("sid", out var sidVals) ? sidVals.OrderBy(GetRankOrder).ToList() : [];
+        var approach = grouped.TryGetValue("approach", out var approachVals) ? approachVals : [];
+        var approachGrouped = approach.GroupBy(GetRunway).ToDictionary(group => group.Key, group => group.ToList());
+        return new OrganizedCharts(info, star, sid, approachGrouped);
     }
 }

@@ -78,9 +78,9 @@
 
 @code {
 
-    private AirlineForm? _airlineForm = new();
-    private AirportForm? _airportForm = new();
-    private AircraftForm? _aircraftForm = new();
+    private readonly AirlineForm? _airlineForm = new();
+    private readonly AirportForm? _airportForm = new();
+    private readonly AircraftForm? _aircraftForm = new();
 
     private IEnumerable<Airline> _displayedAirlines = Enumerable.Empty<Airline>();
     private IEnumerable<Airport> _displayedAirports = Enumerable.Empty<Airport>();
