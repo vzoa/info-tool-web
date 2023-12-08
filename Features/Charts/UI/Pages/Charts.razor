@@ -47,12 +47,15 @@
         <div class="flex flex-col justify-start items-start gap-y-4">
             @foreach (var charts in new List<List<Chart>> { _organizedCharts.Info, _organizedCharts.Sid, _organizedCharts.Star })
             {
-                <div class="flex flex-wrap justify-start items-start">
-                    @foreach (var chart in charts)
-                    {
-                        <button class="@MakeChartButtonClass(chart)" @onclick="() => UpdateDisplayedChart(chart)">@chart.ChartName</button>
-                    }
-                </div>
+                @if (charts.Any())
+                {
+                    <div class="flex flex-wrap justify-start items-start">
+                        @foreach (var chart in charts)
+                        {
+                            <button class="@MakeChartButtonClass(chart)" @onclick="() => UpdateDisplayedChart(chart)">@chart.ChartName</button>
+                        }
+                    </div>
+                }
             }
             
             @foreach (var runwayGroup in _organizedCharts.Approach.Keys.Order())
@@ -91,7 +94,6 @@
     private Chart? _displayedChart;
     private ChartPage? _displayedChartPage;
     
-    private ICollection<Chart> _charts = new List<Chart>();
     private OrganizedCharts _organizedCharts = new() { Info = [], Sid = [], Star = [], Approach = [] };
     private readonly List<Airport> _airports = [];
 
@@ -167,7 +169,6 @@
     {
         _airportId = id;
         var charts = await AviationApiChartService.GetChartsForId(id);
-        _charts = charts.OrderBy(GetRankOrder).ToList();
         _organizedCharts = OrganizeCharts(charts);
     }
 
