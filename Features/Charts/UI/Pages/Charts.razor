@@ -115,14 +115,25 @@
         _airportInputShown = true;
     }
     
-    private void AirportSubmit()
+    private async Task AirportSubmit()
     {
-        _airports.Add(new Airport(_airportForm.AirportId.ToUpper(), AirportType.Other));
+        var newAirport = new Airport(_airportForm.AirportId.ToUpper(), AirportType.Other);
+        _airports.Add(newAirport);
         _airportInputShown = false;
         _airportForm.AirportId = "";
+        
+        var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<string>>("customAirports");
+        if (savedCustomAirportsTask is { Success: true, Value: not null })
+        {
+            savedCustomAirportsTask.Value.Add(newAirport.Id);
+            await ProtectedSessionStore.SetAsync("customAirports", savedCustomAirportsTask.Value);
+        }
+        else
+        {
+            await ProtectedSessionStore.SetAsync("customAirports", new List<string> { newAirport.Id });
+        }
     }
     
-
     protected override async Task OnInitializedAsync()
     {
         _airportId = AirportId ?? string.Empty;
@@ -147,6 +158,8 @@
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        var stateUpdated = false;
+        
         if (firstRender && AirportId is null)
         {
             var savedStateTask = await ProtectedSessionStore.GetAsync<ChartState>("chartState");
@@ -158,12 +171,28 @@
             await UpdateCharts(savedStateTask.Value.AirportId);
             _displayedChart = savedStateTask.Value.Chart;
             _displayedChartPage = savedStateTask.Value.Page;
-            StateHasChanged();
+            stateUpdated = true;
+        }
+
+        if (firstRender)
+        {
+            var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<string>>("customAirports");
+            if (savedCustomAirportsTask is { Success: true, Value: not null })
+            {
+                var customAirports = savedCustomAirportsTask.Value.Select(a => new Airport(a, AirportType.Other));
+                _airports.AddRange(customAirports);
+                stateUpdated = true;
+            }
         }
 
         if (_airportInputShown && _airportInputReference?.Element is not null)
         {
             await _airportInputReference.Element.Value.FocusAsync();
+        }
+
+        if (stateUpdated)
+        {
+            StateHasChanged();
         }
     }
     
