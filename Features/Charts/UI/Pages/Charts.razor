@@ -72,6 +72,7 @@
     <div class="w-2/3">
         @if (_displayedChart is not null)
         {
+            <div class="h-full flex flex-col">
             @if (_displayedChart.Pages.Count > 1)
             {
                 <div class="flex gap-2 items-center text-xs mb-3">
@@ -81,7 +82,8 @@
                     }
                 </div>
             }
-            <object class="pt-1 w-full h-full" type="application/pdf" data="@_displayedChartPage?.PdfPath"></object>
+                <object class="pt-1 w-full grow" type="application/pdf" data="@_displayedChartPage?.PdfPath"></object>
+            </div>
         }
     </div>
 </div>
