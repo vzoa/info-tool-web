@@ -15,16 +15,23 @@
     <div class="bg-slate-900 flex items-center gap-2 px-2 py-0.5 flex-wrap">
         @foreach (var airport in _airports)
         {
-            <button class="@MakeAirportButtonClass(airport)" @onclick="() => UpdateCharts(airport.Id)">
-                @if (airport.Id.Length == 4 && airport.Id.ToUpper().StartsWith("K"))
-                {
-                    @airport.Id[1..]
-                }
-                else
-                {
-                    @airport.Id
-                }
-            </button>
+            @if (airport.Type == AirportType.Other)
+            {
+                <div class="relative mr-2">
+                    <button class="@MakeAirportButtonClass(airport)" @onclick="() => UpdateCharts(airport.Id)">
+                        @FormatAirportId(airport)
+                    </button>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" class="stroke-gray-100 w-4 h-4 absolute top-1 -right-3 hover:stroke-red-500 transition-colors hover:cursor-pointer" @onclick="() => RemoveAirport(airport)">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </div>
+            }
+            else
+            {
+                <button class="@MakeAirportButtonClass(airport)" @onclick="() => UpdateCharts(airport.Id)">
+                    @FormatAirportId(airport)
+                </button>
+            }
         }
         <button @onclick="ShowAirportInput">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
@@ -117,20 +124,38 @@
     
     private async Task AirportSubmit()
     {
-        var newAirport = new Airport(_airportForm.AirportId.ToUpper(), AirportType.Other);
+        var newAirport = new Airport(_airportForm.AirportId.ToUpper(), AirportType.Other, Guid.NewGuid());
         _airports.Add(newAirport);
         _airportInputShown = false;
         _airportForm.AirportId = "";
         
-        var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<string>>("customAirports");
+        var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<SavedAirport>>("customAirports");
         if (savedCustomAirportsTask is { Success: true, Value: not null })
         {
-            savedCustomAirportsTask.Value.Add(newAirport.Id);
+            savedCustomAirportsTask.Value.Add(new SavedAirport(newAirport.Id, newAirport.Guid));
             await ProtectedSessionStore.SetAsync("customAirports", savedCustomAirportsTask.Value);
         }
         else
         {
-            await ProtectedSessionStore.SetAsync("customAirports", new List<string> { newAirport.Id });
+            await ProtectedSessionStore.SetAsync("customAirports", new List<SavedAirport> { new(newAirport.Id, newAirport.Guid) });
+        }
+    }
+
+    private async Task RemoveAirport(Airport airport)
+    {
+        _airports.RemoveAll(a => a.Guid == airport.Guid);
+        if (airport.Id == _airportId)
+        {
+            _displayedChart = null;
+            _displayedChartPage = null;
+            _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
+        }
+        
+        var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<SavedAirport>>("customAirports");
+        if (savedCustomAirportsTask is { Success: true, Value: not null })
+        {
+            savedCustomAirportsTask.Value.RemoveAll(a => a.Guid == airport.Guid);
+            await ProtectedSessionStore.SetAsync("customAirports", savedCustomAirportsTask.Value);
         }
     }
     
@@ -144,15 +169,15 @@
 
         foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Bravos)
         {
-            _airports.Add(new Airport(airport, AirportType.Bravo));
+            _airports.Add(new Airport(airport, AirportType.Bravo, Guid.NewGuid()));
         }
         foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Charlies)
         {
-            _airports.Add(new Airport(airport, AirportType.Charlie));
+            _airports.Add(new Airport(airport, AirportType.Charlie, Guid.NewGuid()));
         }
         foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Deltas)
         {
-            _airports.Add(new Airport(airport, AirportType.Delta));
+            _airports.Add(new Airport(airport, AirportType.Delta, Guid.NewGuid()));
         }
     }
     
@@ -174,10 +199,10 @@
 
         if (firstRender)
         {
-            var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<string>>("customAirports");
+            var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<SavedAirport>>("customAirports");
             if (savedCustomAirportsTask is { Success: true, Value: not null })
             {
-                var customAirports = savedCustomAirportsTask.Value.Select(a => new Airport(a, AirportType.Other));
+                var customAirports = savedCustomAirportsTask.Value.Select(a => new Airport(a.Id, AirportType.Other, a.Guid));
                 _airports.AddRange(customAirports);
                 stateUpdated = true;
             }
@@ -248,7 +273,7 @@
         Other
     }
 
-    private record struct Airport(string Id, AirportType Type);
+    private record struct Airport(string Id, AirportType Type, Guid Guid);
 
     private string MakeAirportButtonClass(Airport airport)
     {
@@ -321,4 +346,9 @@
         var approachGrouped = approach.GroupBy(GetRunway).ToDictionary(group => group.Key, group => group.ToList());
         return new OrganizedCharts(info, star, sid, approachGrouped);
     }
+
+    private static string FormatAirportId(Airport airport) => airport.Id.Length == 4 && airport.Id.ToUpper().StartsWith("K") ? airport.Id[1..] : airport.Id;
+
+    private record struct SavedAirport(string Id, Guid Guid);
+
 }
