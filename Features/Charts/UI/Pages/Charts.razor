@@ -116,6 +116,9 @@
         public string AirportId { get; set; }
     }
 
+    private const string CustomAirportsSessionStorageKey = "customAirports";
+    private const string ChartStateSessionStorageKey = "chartState";
+
     private void ShowAirportInput()
     {
         if (_airportInputShown) return;
@@ -129,15 +132,15 @@
         _airportInputShown = false;
         _airportForm.AirportId = "";
         
-        var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<SavedAirport>>("customAirports");
+        var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
         if (savedCustomAirportsTask is { Success: true, Value: not null })
         {
             savedCustomAirportsTask.Value.Add(new SavedAirport(newAirport.Id, newAirport.Guid));
-            await ProtectedSessionStore.SetAsync("customAirports", savedCustomAirportsTask.Value);
+            await ProtectedSessionStore.SetAsync(CustomAirportsSessionStorageKey, savedCustomAirportsTask.Value);
         }
         else
         {
-            await ProtectedSessionStore.SetAsync("customAirports", new List<SavedAirport> { new(newAirport.Id, newAirport.Guid) });
+            await ProtectedSessionStore.SetAsync(CustomAirportsSessionStorageKey, new List<SavedAirport> { new(newAirport.Id, newAirport.Guid) });
         }
     }
 
@@ -151,11 +154,11 @@
             _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
         }
         
-        var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<SavedAirport>>("customAirports");
+        var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
         if (savedCustomAirportsTask is { Success: true, Value: not null })
         {
             savedCustomAirportsTask.Value.RemoveAll(a => a.Guid == airport.Guid);
-            await ProtectedSessionStore.SetAsync("customAirports", savedCustomAirportsTask.Value);
+            await ProtectedSessionStore.SetAsync(CustomAirportsSessionStorageKey, savedCustomAirportsTask.Value);
         }
     }
     
@@ -187,7 +190,7 @@
         
         if (firstRender && AirportId is null)
         {
-            var savedStateTask = await ProtectedSessionStore.GetAsync<ChartState>("chartState");
+            var savedStateTask = await ProtectedSessionStore.GetAsync<ChartState>(ChartStateSessionStorageKey);
             if (savedStateTask is { Success: true, Value: not null })
             {
                 await UpdateCharts(savedStateTask.Value.AirportId);
@@ -199,7 +202,7 @@
 
         if (firstRender)
         {
-            var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<SavedAirport>>("customAirports");
+            var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
             if (savedCustomAirportsTask is { Success: true, Value: not null })
             {
                 var customAirports = savedCustomAirportsTask.Value.Select(a => new Airport(a.Id, AirportType.Other, a.Guid));
@@ -236,7 +239,7 @@
     private async Task UpdateDisplayedChartPage(ChartPage page)
     {
         _displayedChartPage = page;
-        await ProtectedSessionStore.SetAsync("chartState", new ChartState(_airportId, _displayedChart, _displayedChartPage));
+        await ProtectedSessionStore.SetAsync(ChartStateSessionStorageKey, new ChartState(_airportId, _displayedChart, _displayedChartPage));
     }
 
     private string MakeChartButtonClass(Chart chart)

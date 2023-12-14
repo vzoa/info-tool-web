@@ -18,7 +18,6 @@
     {
         if (firstRender)
         {
-            
             _module = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/livetime.js");
             await _module.InvokeVoidAsync("startTimeUpdate", _hours, _minutes, _seconds);
             await _module.InvokeVoidAsync("reveal", _wrapper);
