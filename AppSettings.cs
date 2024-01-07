@@ -1,4 +1,7 @@
-﻿namespace ZoaReference;
+﻿using AngleSharp.Dom;
+using ZoaReference.Features.Docs.Models;
+
+namespace ZoaReference;
 
 public class AppSettings
 {
@@ -13,6 +16,8 @@ public class AppSettings
     public ArtccAirportsSettings ArtccAirports { get; set; } = new();
     public string ReferenceBindersDirectoryInWwwroot { get; set; } = string.Empty;
     public string DocumentsPdfPath { get; set; } = string.Empty;
+
+    public List<CustomDocumentCategory> CustomDocuments { get; set; } = [];
 
 
     public class CacheTtlSettings

@@ -38,7 +38,7 @@
     protected override async Task OnInitializedAsync()
     {
         var fetchedFacilities = await VnasData.GetArtccFacilities("ZOA");
-        _positions = fetchedFacilities is not null ? fetchedFacilities.SelectMany(f => f.Positions).ToList() : new List<Position>();
+        _positions = fetchedFacilities is not null ? fetchedFacilities.SelectMany(f => f.Positions).ToList() : [];
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
