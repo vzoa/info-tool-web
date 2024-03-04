@@ -105,9 +105,9 @@ public partial class FlightAwareRouteService(IHttpClientFactory httpClientFactor
         }
     }
 
-    private string MakeUrl(string departureIcao, string arrivalIcao)// => $"{appSettings.CurrentValue.Urls.FlightAwareIfrRouteBase}origin={departureIcao}&destination{arrivalIcao}";
+    private string MakeUrl(string departureIcao, string arrivalIcao)
     {
-        return appSettings.CurrentValue.Urls.FlightAwareIfrRouteBase + @"origin=" + departureIcao + @"&destination=" + arrivalIcao;
+        return appSettings.CurrentValue.Urls.FlightAwareIfrRouteBase + "origin=" + departureIcao + "&destination=" + arrivalIcao;
     }
 
     private static bool TryParseMinAltitude(string altitudeRange, out int minAltitude)
