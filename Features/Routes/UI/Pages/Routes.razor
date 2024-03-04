@@ -121,6 +121,10 @@
                     </TemplateColumn>
                 </QuickGrid>
             }
+            else if (_isFlightAwareError)
+            {
+                <p>Error loading readl world routes</p>
+            }
         </div>   
     }
 </div>
@@ -132,6 +136,7 @@
     private IEnumerable<AliasRouteRule> _displayedAliasRouteRules = Enumerable.Empty<AliasRouteRule>();
     private IEnumerable<LoaRule> _displayedLoaRules = Enumerable.Empty<LoaRule>();
     private bool _showFlightAwareLoading;
+    private bool _isFlightAwareError = false;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -172,9 +177,17 @@
                            && r.ArrivalAirportRegex.IsMatch(arrivalIcao));
 
             _showFlightAwareLoading = true;
-            var temp = await FlightAware.FetchRoutesAsync(departureIcao, arrivalIcao);
+            try
+            {
+                _displayedFlightAwareRoutes = await FlightAware.FetchRoutesAsync(departureIcao, arrivalIcao);
+                _isFlightAwareError = false;
+            }
+            catch (Exception)
+            {
+                _displayedFlightAwareRoutes = null;
+                _isFlightAwareError = true;
+            }
             _showFlightAwareLoading = false;
-            _displayedFlightAwareRoutes = temp;
         }
     }
 

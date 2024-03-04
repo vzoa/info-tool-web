@@ -25,7 +25,8 @@ public partial class FlightAwareRouteService(IHttpClientFactory httpClientFactor
 
             // Open FlightAware IFR routing page
             var client = httpClientFactory.CreateClient();
-            using var stream = await client.GetStreamAsync(MakeUrl(departureIcao, arrivalIcao));
+            client.DefaultRequestHeaders.UserAgent.TryParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0");
+            await using var stream = await client.GetStreamAsync(MakeUrl(departureIcao, arrivalIcao));
             var parser = new HtmlParser();
             using var document = await parser.ParseDocumentAsync(stream);
 
@@ -40,7 +41,7 @@ public partial class FlightAwareRouteService(IHttpClientFactory httpClientFactor
             var flightRows = flightsTable?.QuerySelectorAll("tr");
 
             // Iterate through Route Summary table and create new FlightRouteSummary for each row
-            for (int i = 0; i < summaryRows.Length; i++)
+            for (var i = 0; i < summaryRows.Length; i++)
             {
                 // Ignore the first two rows which are table headers; every row after that is a data row
                 if (i <= 1) { continue; }
@@ -63,7 +64,7 @@ public partial class FlightAwareRouteService(IHttpClientFactory httpClientFactor
 
             // Iterate through itemized routes table and create new RealWorldFlight for each row.
             // Use the lookup dict to add to correct RouteSummary
-            for (int i = 0; i < flightRows.Length; i++)
+            for (var i = 0; i < flightRows.Length; i++)
             {
                 // Ignore the first two rows which are table headers; every row after that is a data row
                 if (i <= 1) { continue; }
