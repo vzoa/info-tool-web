@@ -4,11 +4,7 @@
 
 
 <div class="font-mono bg-orange-800 text-gray-100 p-3" @ref="_wrapper">
-    <span @ref="_hours">@_initialTime.ToString("HH")</span>
-    <span>:</span>
-    <span @ref="_minutes">@_initialTime.ToString("mm")</span>
-    <span>:</span>
-    <span @ref="_seconds">@_initialTime.ToString("ss")</span>
+    <span @ref="_hours">@_initialTime.ToString("HH")</span><span>:</span><span @ref="_minutes">@_initialTime.ToString("mm")</span><span>:</span><span @ref="_seconds">@_initialTime.ToString("ss")</span>
 </div>
 
 @code {
