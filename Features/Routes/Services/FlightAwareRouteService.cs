@@ -105,7 +105,7 @@ public partial class FlightAwareRouteService(IHttpClientFactory httpClientFactor
         }
     }
 
-    private string MakeUrl(string departureIcao, string arrivalIcao)
+    public string MakeUrl(string departureIcao, string arrivalIcao)
     {
         return appSettings.CurrentValue.Urls.FlightAwareIfrRouteBase + "origin=" + departureIcao + "&destination=" + arrivalIcao;
     }
