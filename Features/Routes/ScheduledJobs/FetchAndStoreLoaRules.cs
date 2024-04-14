@@ -32,8 +32,8 @@ public class FetchAndStoreLoaRules(ILogger<FetchAndStoreLoaRules> logger, IHttpC
     {
         public LoaRuleMap()
         {
-            Map(m => m.DepartureAirportRegex).Convert(args => new Regex(args.Row.GetField("Departure_Regex")));
-            Map(m => m.ArrivalAirportRegex).Convert(args => new Regex(args.Row.GetField("Arrival_Regex")));
+            Map(m => m.DepartureAirportRegex).Convert(args => new Regex(args.Row.GetField("Departure_Regex"), RegexOptions.IgnoreCase));
+            Map(m => m.ArrivalAirportRegex).Convert(args => new Regex(args.Row.GetField("Arrival_Regex"), RegexOptions.IgnoreCase));
             Map(m => m.Route).Name("Route");
             Map(m => m.IsRnavRequired).Name("RNAV Required");
             Map(m => m.Notes).Name("Notes");
