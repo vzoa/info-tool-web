@@ -40,7 +40,13 @@ if (!app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles();
+var cacheMaxAgeOneHour = (60 * 60).ToString();
+app.UseStaticFiles(new StaticFileOptions {
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append(
+            "Cache-Control", $"public, max-age={cacheMaxAgeOneHour}");
+    }});
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
