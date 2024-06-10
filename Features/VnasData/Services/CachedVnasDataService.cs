@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -14,52 +13,36 @@ public class CachedVnasDataService(IMemoryCache cache, IHttpClientFactory httpCl
         Converters = { new JsonStringEnumConverter() }
     };
 
-    public async Task<IEnumerable<Facility>?> GetArtccFacilities(string artccId, CancellationToken c = default)
+    public async Task<IEnumerable<FacilityExtended>> GetArtccFacilities(string artccId, CancellationToken c = default)
     {
-        if (cache.TryGetValue<IEnumerable<Facility>>(MakeFactilityCacheKey(artccId), out var cached))
+        if (cache.TryGetValue<IEnumerable<FacilityExtended>>(MakeFacilityCacheKey(artccId), out var cached))
         {
             logger.LogInformation("Found cached VNAS Facilities data for {artcc}", artccId);
-            return cached;
+            return cached ?? Enumerable.Empty<FacilityExtended>();
         }
         
         var jsonRoot = await GetJsonRoot(artccId, c);
         if (jsonRoot is null)
         {
-            return Enumerable.Empty<Facility>();
+            return Enumerable.Empty<FacilityExtended>();
         }
-
-        var returnFacilities = new List<Facility>();
+        
+        var videoMapDict = jsonRoot.VideoMaps.ToDictionary(m => m.Id);
+        var returnFacilities = new List<FacilityExtended>();
         var queue = new Queue<Facility>();
         queue.Enqueue(jsonRoot.Facility);
 
         while (queue.Count > 0)
         {
             var facility = queue.Dequeue();
-            returnFacilities.Add(facility);
+            var maps = facility.StarsConfiguration?.VideoMapIds.Select(m => videoMapDict.GetValueOrDefault(m)).Where(m => m is not null);
+            returnFacilities.Add(new FacilityExtended(facility, (maps ?? [])!));
             facility.ChildFacilities.ForEach(child => queue.Enqueue(child));
         }
 
         var expiration = DateTimeOffset.UtcNow.AddSeconds(appSettings.CurrentValue.CacheTtls.VnasData);
-        cache.Set(MakeFactilityCacheKey(artccId), returnFacilities, expiration);
+        cache.Set(MakeFacilityCacheKey(artccId), returnFacilities, expiration);
         return returnFacilities;
-    }
-
-    public async Task<IEnumerable<VideoMap>?> GetArtccVideoMaps(string artccId, CancellationToken c = default)
-    {
-        if (cache.TryGetValue<IEnumerable<VideoMap>>(MakeVideoMapCacheKey(artccId), out var cached))
-        {
-            return cached;
-        }
-        
-        var jsonRoot = await GetJsonRoot(artccId, c);
-        if (jsonRoot is null)
-        {
-            return Enumerable.Empty<VideoMap>();
-        }
-        
-        var expiration = DateTimeOffset.UtcNow.AddSeconds(appSettings.CurrentValue.CacheTtls.VnasData);
-        cache.Set<ICollection<VideoMap>>(MakeVideoMapCacheKey(artccId), jsonRoot.VideoMaps, expiration);
-        return jsonRoot.VideoMaps;
     }
 
     private async Task<VnasApiRoot?> GetJsonRoot(string artccId, CancellationToken c = default)
@@ -69,14 +52,7 @@ public class CachedVnasDataService(IMemoryCache cache, IHttpClientFactory httpCl
         return jsonRoot;
     }
 
-    public async Task ForceCache(string artccId, CancellationToken c = default)
-    {
-        var task1 = GetArtccFacilities(artccId, c);
-        var task2 = GetArtccVideoMaps(artccId, c);
-        await Task.WhenAll(task1, task2);
-    }
+    public Task ForceCache(string artccId, CancellationToken c = default) => GetArtccFacilities(artccId, c);
     
-    private static string MakeFactilityCacheKey(string id) => $"VnasDataFacility:{id}";
-    
-    private static string MakeVideoMapCacheKey(string id) => $"VnasDataVideoMap:{id}";
+    private static string MakeFacilityCacheKey(string id) => $"VnasDataFacility:{id}";
 }

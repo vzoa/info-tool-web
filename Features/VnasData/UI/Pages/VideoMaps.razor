@@ -6,7 +6,16 @@
 
 @inject CachedVnasDataService VnasData
 @inject IJSRuntime Js
+@inject ProtectedSessionStorage ProtectedSessionStore
 
+<div class="ml-1 mb-4">
+    <select @bind:get="_selectedFacilityId" @bind:set="UpdateSelectedFacility" class="p-2 bg-gray-700 text-gray-100 w-64">
+        @foreach (var facility in _facilities)
+        {
+            <option value="@facility.Facility.Id" class="text-gray-100">@facility.Facility.Name</option>
+        }
+    </select>
+</div>
 
 <input @ref="@_input" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" type="text" @bind="_filterText" @bind:event="oninput" placeholder="Search" />
 <div class="text-s">
@@ -17,43 +26,59 @@
 </div>
 
 @code {
-    private ICollection<VideoMap> _maps = new List<VideoMap>();
-    private IQueryable<VideoMap> MapsQueryable => _maps.AsQueryable();
+    private IEnumerable<FacilityExtended> _facilities = [];
+    private string _selectedFacilityId = "";
+    private FacilityExtended? _selectedFacility;
     
     private readonly GridSort<VideoMap> _sortById = GridSort<VideoMap>
         .ByAscending(p => p.StarsId);
     
     private ElementReference _input;
     
-    private IQueryable<VideoMap> FilteredMaps
-    {
-        get { return MapsQueryable.Where(m => (m.StarsId != 0) && ContainsFilterString(m, _filterText)); }
-    }
+    private IQueryable<VideoMap> FilteredMaps =>
+        _selectedFacility is null 
+            ? Enumerable.Empty<VideoMap>().AsQueryable() 
+            :  _selectedFacility.VideoMaps.AsQueryable().Where(m => m.StarsId != 0 && ContainsFilterString(m, _filterText));
 
     private string _filterText = "";
 
     protected override async Task OnInitializedAsync()
     {
-        var fetchedMaps = await VnasData.GetArtccVideoMaps("ZOA");
-        _maps = fetchedMaps is not null ? fetchedMaps.ToList() : new List<VideoMap>();
+        _facilities = (await VnasData.GetArtccFacilities("ZOA")).Where(f => f.Facility.StarsConfiguration is not null);
     }
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            var savedStateTask = await ProtectedSessionStore.GetAsync<string>("videomapsSelectedFacilityId");
+            if (savedStateTask is { Success: true, Value: not null })
+            {
+                var facility = _facilities.FirstOrDefault(f => f.Facility.Id == savedStateTask.Value);
+                if (facility is not null)
+                {
+                    _selectedFacilityId = savedStateTask.Value;
+                    _selectedFacility = facility;
+                }
+                StateHasChanged();
+            }
             await Js.InvokeVoidAsync("SetFocusToElement", _input);
         }
     }
-    
-    private static bool ContainsFilterString(VideoMap m, string s)
-    {
-        if (string.IsNullOrEmpty(s))
-        {
-            return true;
-        }
-        return m.ShortName.Contains(s, StringComparison.OrdinalIgnoreCase)
-               || m.StarsId.ToString().Contains(s, StringComparison.OrdinalIgnoreCase);
-    }
-}
 
+    private async Task UpdateSelectedFacility(string value)
+    {
+        var facility = _facilities.FirstOrDefault(f => f.Facility.Id == value);
+        if (facility is not null)
+        {
+            _selectedFacilityId = value;
+            _selectedFacility = facility;
+            await ProtectedSessionStore.SetAsync("videomapsSelectedFacilityId", _selectedFacilityId);
+        }
+    }
+    
+    private static bool ContainsFilterString(VideoMap m, string s) =>
+        string.IsNullOrEmpty(s) 
+            || m.ShortName.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || m.StarsId.ToString().Contains(s, StringComparison.OrdinalIgnoreCase);
+}

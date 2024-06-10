@@ -38,7 +38,7 @@
     protected override async Task OnInitializedAsync()
     {
         var fetchedFacilities = await VnasData.GetArtccFacilities("ZOA");
-        _positions = fetchedFacilities is not null ? fetchedFacilities.SelectMany(f => f.Positions).ToList() : new List<Position>();
+        _positions = fetchedFacilities.SelectMany(f => f.Facility.Positions).ToList();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -55,15 +55,10 @@
         return $"{str[..3]}.{str[3..6]}";
     }
 
-    private static bool ContainsFilterString(Position p, string s)
-    {
-        if (string.IsNullOrEmpty(s))
-        {
-            return true;
-        }
-        return p.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
-               || p.Callsign.Contains(s, StringComparison.OrdinalIgnoreCase)
-               || p.RadioName.Contains(s, StringComparison.OrdinalIgnoreCase)
-               || FreqToString(p.Frequency).Contains(s, StringComparison.OrdinalIgnoreCase);
-    }
+    private static bool ContainsFilterString(Position p, string s) =>
+        string.IsNullOrEmpty(s)
+            || p.Name.Contains(s, StringComparison.OrdinalIgnoreCase) 
+            || p.Callsign.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || p.RadioName.Contains(s, StringComparison.OrdinalIgnoreCase)
+            || FreqToString(p.Frequency).Contains(s, StringComparison.OrdinalIgnoreCase);
 }

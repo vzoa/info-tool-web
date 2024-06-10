@@ -17,9 +17,6 @@ public class Area
     [JsonPropertyName("surveillanceRange")]
     public int SurveillanceRange { get; set; }
 
-    [JsonPropertyName("videoMapIds")]
-    public List<string> VideoMapIds { get; set; }
-
     [JsonPropertyName("ssaAirports")]
     public List<string> SsaAirports { get; set; }
 
@@ -669,6 +666,9 @@ public class StarsConfiguration
 
     [JsonPropertyName("starsHandoffIds")]
     public List<StarsHandoffId> StarsHandoffIds { get; set; }
+    
+    [JsonPropertyName("videoMapIds")]
+    public List<string> VideoMapIds { get; set; }
 
     [JsonPropertyName("artccHandoffsUseNasId")]
     public bool ArtccHandoffsUseNasId { get; set; }
