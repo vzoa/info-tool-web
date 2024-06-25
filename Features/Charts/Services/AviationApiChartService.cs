@@ -91,10 +91,8 @@ public class AviationApiChartService(ILogger<AviationApiChartService> logger, IH
     
     private async Task<IEnumerable<AviationApiChartDto>> GetChartsDtoForId(string id, CancellationToken c = default)
     {
-        var client = httpClientFactory.CreateClient();
-        client.BaseAddress = new Uri(appSettings.CurrentValue.Urls.ChartsApiEndpoint);
-        var apiJson = await client.GetFromJsonAsync<Dictionary<string, ICollection<AviationApiChartDto>>>($"?apt={id}", c);
-        return apiJson is not null ? apiJson.Values.SelectMany(chart => chart) : Enumerable.Empty<AviationApiChartDto>();
+        var result = await GetChartsDtoForIds([id], c);
+        return result.Keys.Count > 0 ? result.Values.SelectMany(chart => chart) : Enumerable.Empty<AviationApiChartDto>();
     }
     
     private async Task<Dictionary<string, ICollection<AviationApiChartDto>>> GetChartsDtoForIds(IEnumerable<string> ids, CancellationToken c = default)
@@ -102,7 +100,16 @@ public class AviationApiChartService(ILogger<AviationApiChartService> logger, IH
         var client = httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(appSettings.CurrentValue.Urls.ChartsApiEndpoint);
         var queryStr = string.Join(",", ids);
-        var apiJson = await client.GetFromJsonAsync<Dictionary<string, ICollection<AviationApiChartDto>>>($"?apt={queryStr}", c);
+        Dictionary<string, ICollection<AviationApiChartDto>>? apiJson = null;
+        try
+        {
+            apiJson = await client.GetFromJsonAsync<Dictionary<string, ICollection<AviationApiChartDto>>>($"?apt={queryStr}", c);
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogWarning("Error while fetching charts for {airports}: {error}", queryStr, ex);
+        }
+        
         return apiJson ?? new Dictionary<string, ICollection<AviationApiChartDto>>();
     }
 
