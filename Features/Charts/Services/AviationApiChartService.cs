@@ -97,9 +97,15 @@ public class AviationApiChartService(ILogger<AviationApiChartService> logger, IH
     
     private async Task<Dictionary<string, ICollection<AviationApiChartDto>>> GetChartsDtoForIds(IEnumerable<string> ids, CancellationToken c = default)
     {
+        var enumerable = ids as string[] ?? ids.ToArray();
+        if (enumerable.Length == 0)
+        {
+            return new Dictionary<string, ICollection<AviationApiChartDto>>();
+        }
+        
         var client = httpClientFactory.CreateClient();
         client.BaseAddress = new Uri(appSettings.CurrentValue.Urls.ChartsApiEndpoint);
-        var queryStr = string.Join(",", ids);
+        var queryStr = string.Join(",", enumerable);
         Dictionary<string, ICollection<AviationApiChartDto>>? apiJson = null;
         try
         {
