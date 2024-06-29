@@ -7,40 +7,43 @@
 
 @inject DigitalAtisRepository AtisRepository;
 
-
-@foreach (var atis in _atisEnumerable)
+@if (_atisList is not null)
 {
-    <div class="flex mb-2">
-        <div class="flex flex-col items-center w-20 shrink-0 justify-center">
-            <span class="text-2xl">@atis.IcaoId[1..]</span>
-        </div>
-        <div class="flex items-center border border-slate-600 p-1.5 text-sm w-20 shrink-0 justify-center">
-            <div class="flex flex-col items-center">
-                @if (atis.Type != Models.Atis.AtisType.Combined)
-                {
-                    <span class="text-sm">@atis.Type</span>
-                }
-                <span class="font-mono text-2xl text-yellow-500">@atis.InfoLetter</span>
-                <span class="text-sm">@GetIssueTimeString(atis)</span>
+    foreach (var atis in _atisList)
+    {
+        <div class="flex mb-2">
+            <div class="flex flex-col items-center w-20 shrink-0 justify-center">
+                <span class="text-2xl">@atis.IcaoId[1..]</span>
+            </div>
+            <div class="flex items-center border border-slate-600 p-1.5 text-sm w-20 shrink-0 justify-center">
+                <div class="flex flex-col items-center">
+                    @if (atis.Type != Models.Atis.AtisType.Combined)
+                    {
+                        <span class="text-sm">@atis.Type</span>
+                    }
+                    <span class="font-mono text-2xl text-yellow-500">@atis.InfoLetter</span>
+                    <span class="text-sm">@GetIssueTimeString(atis)</span>
+                </div>
+            </div>
+            <div class="ml-3 flex items-center border border-slate-600 p-1.5 text-xs w-64 shrink-0">
+                <span>@atis.WeatherText</span>
+            </div>
+            <div class="ml-3 flex items-center border border-slate-600 p-1.5 text-sm grow">
+                <span>@atis.StatusText</span>
             </div>
         </div>
-        <div class="ml-3 flex items-center border border-slate-600 p-1.5 text-xs w-64 shrink-0">
-            <span>@atis.WeatherText</span>
-        </div>
-        <div class="ml-3 flex items-center border border-slate-600 p-1.5 text-sm grow">
-            <span>@atis.StatusText</span>
-        </div>
-    </div>
+    }
 }
+
 
 @code {
     private readonly string[] _airports = { "KSFO", "KSJC", "KRNO", "KOAK", "KSMF" };
-    private IEnumerable<Models.Atis> _atisEnumerable = Enumerable.Empty<Models.Atis>();
+    private List<Models.Atis>? _atisList;
     private static string GetIssueTimeString(Models.Atis atis) => atis.IssueTime.ToString("HH:mm");
     
     protected override void OnInitialized()
     {
-        _atisEnumerable = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId));
+        _atisList = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId)).ToList();
         AtisRepository.NewInfoLetter += UpdateNewLetter;
         AtisRepository.NewAirportAdded += UpdateNewAirport;
     }
@@ -57,7 +60,7 @@
 
     private void UpdateDisplayedAtis()
     {
-        _atisEnumerable = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId));
+        _atisList = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId)).ToList();
         _ = InvokeAsync(StateHasChanged);
     }
     
