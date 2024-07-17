@@ -4,7 +4,7 @@ namespace ZoaReference.Features.DigitalAtis.Repositories;
 
 public class DigitalAtisRepository(ILogger<DigitalAtisRepository> logger)
 {
-    private Dictionary<string, DigitalAtisRecord> _atisDict = new();
+    private readonly Dictionary<string, DigitalAtisRecord> _atisDict = new();
 
     public event EventHandler<NewAirportAddedArgs>? NewAirportAdded;
     public event EventHandler<NewInfoLetterArgs>? NewInfoLetter;
@@ -16,22 +16,20 @@ public class DigitalAtisRepository(ILogger<DigitalAtisRepository> logger)
 
     public void UpdateAtisForId(string id, DigitalAtisRecord newAtis)
     {
+        var idUpper = id.ToUpper();
         // Return early if just added an airport that didn't exist before
-        if (!_atisDict.ContainsKey(id.ToUpper()))
+        if (!_atisDict.TryGetValue(idUpper, out var existingRecord))
         {
             _atisDict[id.ToUpper()] = newAtis;
-            OnNewAirportAdded(new NewAirportAddedArgs() { Id = id.ToUpper() });
+            OnNewAirportAdded(new NewAirportAddedArgs { Id = idUpper });
             return;
         }
         
         // Otherwise, check if new letter then update and raise event
-        var existingRecord = _atisDict[id.ToUpper()];
-        if (IsAnyNewLetter(existingRecord, newAtis))
-        {
-            logger.LogInformation("Here we found a new letter");
-            _atisDict[id.ToUpper()] = newAtis;
-            OnNewInfoLetter(new NewInfoLetterArgs() { Id = id.ToUpper() });
-        }
+        if (!IsAnyNewLetter(existingRecord, newAtis)) return;
+        logger.LogInformation("Here we found a new letter for {}", idUpper);
+        _atisDict[idUpper] = newAtis;
+        OnNewInfoLetter(new NewInfoLetterArgs { Id = idUpper });
     }
     
     public IEnumerable<Atis> GetAllAtis()
@@ -64,7 +62,7 @@ public class DigitalAtisRepository(ILogger<DigitalAtisRepository> logger)
         {
             logger.LogInformation("{atis1} is not equal to {atis2}", atis1!.InfoLetter, atis2!.InfoLetter);
         }
-        return atis1!.InfoLetter != atis2!.InfoLetter;
+        return atis1.InfoLetter != atis2.InfoLetter;
     }
 
     private bool IsAnyNewLetter(DigitalAtisRecord atis1, DigitalAtisRecord atis2)

@@ -12,14 +12,15 @@
 @inject LoaRuleRepository LoaRules
 @inject AirportRepository Airports
 @inject IJSRuntime Js
+@inject ProtectedSessionStorage ProtectedSessionStore
 
 
 <div class="flex flex-col text-s gap-8">
     <div>
         <EditForm Model="@_routeForm" OnValidSubmit="@RouteSubmit">
             <DataAnnotationsValidator />
-            <InputText @bind-Value="_routeForm!.DepartureId" id="departureInput" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Departure ID"/>
-            <InputText @bind-Value="_routeForm!.ArrivalId" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Arrival ID"/>
+            <InputText @bind-Value="_routeForm.DepartureId" id="departureInput" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Departure ID"/>
+            <InputText @bind-Value="_routeForm.ArrivalId" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" placeholder="Arrival ID"/>
             <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search Routes</button>
             <ValidationMessage For="() => _routeForm.DepartureId"/>
             <ValidationMessage For="() => _routeForm.ArrivalId"/>
@@ -121,6 +122,10 @@
                     </TemplateColumn>
                 </QuickGrid>
             }
+            else if (_isFlightAwareError)
+            {
+                <p>Error loading real world routes. Try visiting <a target="_blank" href="@FlightAware.MakeUrl(_routeForm.DepartureId, _routeForm.ArrivalId)">FlightAware</a> directly.</p>
+            }
         </div>   
     }
 </div>
@@ -132,11 +137,20 @@
     private IEnumerable<AliasRouteRule> _displayedAliasRouteRules = Enumerable.Empty<AliasRouteRule>();
     private IEnumerable<LoaRule> _displayedLoaRules = Enumerable.Empty<LoaRule>();
     private bool _showFlightAwareLoading;
+    private bool _isFlightAwareError = false;
     
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            var savedStateTask = await ProtectedSessionStore.GetAsync<SavedAirportPairRoutes>(SavedAirportPairRoutesStorageKey);
+            if (savedStateTask.Success)
+            {
+                _routeForm.DepartureId = savedStateTask.Value.DepartureId;
+                _routeForm.ArrivalId = savedStateTask.Value.ArrivalId;
+                await RouteSubmit();
+            }
+            StateHasChanged();
             await Js.InvokeVoidAsync("SetFocusToId", "departureInput");
         }
     }
@@ -145,20 +159,20 @@
     {
         [Required]
         [StringLength(4, ErrorMessage = "ID cannot exceed 4 characters.")]
-        public string DepartureId { get; set; }
-        
+        public string DepartureId { get; set; } = "";
+
         [Required]
         [StringLength(4, ErrorMessage = "ID cannot exceed 4 characters.")]
-        public string ArrivalId { get; set; }
+        public string ArrivalId { get; set; } = "";
     }
 
     private async Task RouteSubmit()
     {
-        var departureIcao = IdtoIcaoId(_routeForm.DepartureId);
-        var departureLocal = IdtoLocalId(_routeForm.DepartureId);
+        var departureIcao = IdToIcaoId(_routeForm.DepartureId);
+        var departureLocal = IdToLocalId(_routeForm.DepartureId);
         
-        var arrivalIcao = IdtoIcaoId(_routeForm.ArrivalId);
-        var arrivalLocal = IdtoLocalId(_routeForm.ArrivalId);
+        var arrivalIcao = IdToIcaoId(_routeForm.ArrivalId);
+        var arrivalLocal = IdToLocalId(_routeForm.ArrivalId);
         
         // Don't need null check here because Equals can take null
         _displayedAliasRouteRules = AliasRouteRules.GetAllRules()
@@ -172,13 +186,22 @@
                            && r.ArrivalAirportRegex.IsMatch(arrivalIcao));
 
             _showFlightAwareLoading = true;
-            var temp = await FlightAware.FetchRoutesAsync(departureIcao, arrivalIcao);
+            try
+            {
+                _displayedFlightAwareRoutes = await FlightAware.FetchRoutesAsync(departureIcao, arrivalIcao);
+                _isFlightAwareError = false;
+            }
+            catch (Exception)
+            {
+                _displayedFlightAwareRoutes = null;
+                _isFlightAwareError = true;
+            }
             _showFlightAwareLoading = false;
-            _displayedFlightAwareRoutes = temp;
+            await ProtectedSessionStore.SetAsync(SavedAirportPairRoutesStorageKey, new SavedAirportPairRoutes(_routeForm.DepartureId, _routeForm.ArrivalId));
         }
     }
 
-    private string? IdtoIcaoId(string id)
+    private string? IdToIcaoId(string id)
     {
         if (id.Length == 4)
         {
@@ -189,7 +212,7 @@
         return airport?.IcaoId;
     }
     
-    private string? IdtoLocalId(string id)
+    private string? IdToLocalId(string id)
     {
         if (id.Length == 3)
         {
@@ -205,4 +228,8 @@
         if (alt is null) return "";
         return alt >= 18000 ? $"FL{alt.ToString()[..3]}" : alt.ToString();
     }
+
+    private record struct SavedAirportPairRoutes(string DepartureId, string ArrivalId);
+    private const string SavedAirportPairRoutesStorageKey = "SavedAirportPairRoutes";
+
 }
