@@ -43,14 +43,17 @@ public class FetchAndStoreDocs(ILogger<FetchAndStoreDocs> logger, IHttpClientFac
             {
                 var pdfName = GetPdfNameFromUrl(doc.Url);
                 var localPdfPath = Path.ChangeExtension(Path.Combine(PdfFolderPath, pdfName), ".pdf");
-                if (!File.Exists(localPdfPath))
+                
+                // Always write new file
+                try
                 {
                     var task = WriteRemotePdfToLocal(doc.Url, localPdfPath);
                     tasks.Add(task);
+                    logger.LogInformation("Found pdf at {url} and writing at {path}", doc.Url, localPdfPath);
                 }
-                else
+                catch (Exception e)
                 {
-                    logger.LogInformation("Found pdf at {url} but file already exists at {path}", doc.Url, localPdfPath);
+                    logger.LogWarning("Could not write PDF from {url} at {path}. Error: {e}", doc.Url, localPdfPath, e);
                 }
             }
         }
