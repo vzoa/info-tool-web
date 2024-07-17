@@ -10,7 +10,7 @@ public class DocsModule : IServiceConfigurator, ISchedulerConfigurator
     public IServiceCollection AddServices(IServiceCollection services)
     {
         services.AddSingleton<DocumentRepository>();
-        services.AddTransient<FetchAndStoreZoaDocs>();
+        services.AddTransient<FetchAndStoreDocs>();
         return services;
     }
 
@@ -18,7 +18,7 @@ public class DocsModule : IServiceConfigurator, ISchedulerConfigurator
     {
         return scheduler =>
         {
-            scheduler.Schedule<FetchAndStoreZoaDocs>()
+            scheduler.Schedule<FetchAndStoreDocs>()
                 .Hourly()
                 .RunOnceAtStart();
         };

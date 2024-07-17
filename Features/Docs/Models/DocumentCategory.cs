@@ -2,11 +2,8 @@
 
 namespace ZoaReference.Features.Docs.Models;
 
-public class DocumentCategory
+public record DocumentCategory
 {
-    [JsonPropertyName("name")]
-    public string Name { get; set; }
-
-    [JsonPropertyName("files")]
-    public List<Document> Documents { get; set; }
+    public string Name { get; init; } = "";
+    public List<Document> Documents { get; init; } = [];
 }

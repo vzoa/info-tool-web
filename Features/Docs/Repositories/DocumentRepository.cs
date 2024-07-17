@@ -4,7 +4,7 @@ namespace ZoaReference.Features.Docs.Repositories;
 
 public class DocumentRepository
 {
-    private readonly List<DocumentCategory> _repository = new List<DocumentCategory>();
+    private readonly List<DocumentCategory> _repository = [];
 
     public IEnumerable<DocumentCategory> Categories  => _repository;
 
