@@ -25,7 +25,7 @@ public partial class FetchAndStoreAliasRoutes(ILogger<FetchAndStoreAliasRoutes> 
             var line = reader.ReadLine();
             if (line is not null && TryParseRouteRule(line, out var routeRule))
             {
-                rules.Add(routeRule);
+                rules.Add(routeRule!);
             }
         }
         routeRuleRepository.ClearRules();
