@@ -29,7 +29,7 @@ public class FetchAndStoreAirlineIcao(ILogger<FetchAndStoreAirlineIcao> logger, 
 
         // Setup reads
         var url = appSettings.CurrentValue.Urls.AirlinesCsv;
-        var client = httpClientFactory.CreateClient();
+        using var client = httpClientFactory.CreateClient();
         await using var responseStream = await client.GetStreamAsync(url);
         using var reader = new StreamReader(responseStream);
         using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);

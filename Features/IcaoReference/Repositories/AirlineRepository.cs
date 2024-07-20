@@ -6,7 +6,7 @@ public class AirlineRepository
 {
     public IEnumerable<Airline> AllAirlines => _repository;
     
-    private readonly List<Airline> _repository = new();
+    private readonly List<Airline> _repository = [];
 
     public void AddAirline(Airline airline) => _repository.Add(airline);
     
