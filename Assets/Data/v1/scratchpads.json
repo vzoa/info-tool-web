@@ -311,12 +311,8 @@
         "description": "RNAV (RNP) Z Runway 28R Approach"
       },
       {
-        "entry": "Z8L",
-        "description": "RNZ (RNP) Z Runway 12/30 Approach"
-      },
-      {
-        "entry": "Z8L",
-        "description": "RNAV (RNP) Z Runway 28L Approach"
+        "entry": "RNZ",
+        "description": "RNAV (RNP) Z Runway 12/30 Approach"
       },
       {
         "entry": "ISS",
@@ -629,10 +625,6 @@
       {
         "entry": "I",
         "description": "ILS Approach"
-      },
-      {
-        "entry": "E",
-        "description": "Localizer Approach"
       },
       {
         "entry": "E",
