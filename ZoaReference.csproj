@@ -22,10 +22,6 @@
       <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.0" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Features\Scratchpads\UI\Pages\" />
-    </ItemGroup>
-
     <Target Name="Tailwind" BeforeTargets="Build">
         <Exec Command="npm run css:build"/>
     </Target>
