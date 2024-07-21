@@ -707,10 +707,6 @@
         "description": "VFR Aircraft Assigned Runway Heading"
       },
       {
-        "entry": "Z",
-        "description": "Closed Traffic With Tower"
-      },
-      {
         "entry": "1",
         "description": "VFR departure heading 030"
       },
