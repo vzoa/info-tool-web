@@ -1,0 +1,1315 @@
+﻿[
+  {
+    "id": "FAT",
+    "scratchpads": [
+      {
+        "entry": "SIS",
+        "description": "Straight-in SFO"
+      },
+      {
+        "entry": "FR1",
+        "description": "IFR approach going to Friant Radar"
+      },
+      {
+        "entry": "GPR",
+        "description": "GPS 29R/11R"
+      },
+      {
+        "entry": "GPL",
+        "description": "GPS 29L/11L"
+      },
+      {
+        "entry": "HR1",
+        "description": "IFR approach going to HR"
+      },
+      {
+        "entry": "LOC",
+        "description": "Localizer approach to 11L"
+      },
+      {
+        "entry": "ILS",
+        "description": "ILS approach to 29R"
+      },
+      {
+        "entry": "PTN",
+        "description": "IFR approach stay VFR with tower"
+      },
+      {
+        "entry": "BRK",
+        "description": "Overhead Break"
+      },
+      {
+        "entry": "11L",
+        "description": "Class C arrival 11L"
+      },
+      {
+        "entry": "29L",
+        "description": "Class C arrival 29L"
+      },
+      {
+        "entry": "VOR",
+        "description": "VOR 11L"
+      },
+      {
+        "entry": "OTP",
+        "description": "On Top"
+      },
+      {
+        "entry": "11R",
+        "description": "Class C arrival 11R"
+      },
+      {
+        "entry": "29R",
+        "description": "Class C arrival 29R"
+      },
+      {
+        "entry": "SFO",
+        "description": "Simulated flameout"
+      },
+      {
+        "entry": "SVF",
+        "description": "Special VFR"
+      },
+      {
+        "entry": "VAR",
+        "description": "VA or CTC to 11R or 29R"
+      },
+      {
+        "entry": "VAL",
+        "description": "VA or CTC to 11L or 29L"
+      }
+    ]
+  },
+  {
+    "id": "B",
+    "scratchpads": [
+      {
+        "entry": "AIS",
+        "description": "Airport In Sight"
+      },
+      {
+        "entry": "FIS",
+        "description": "Aircraft requesting a FMS Visual Approach and has airport or charted landmark insight"
+      },
+      {
+        "entry": "FMS*",
+        "description": "Aircraft requesting / assigned a FMS Visual Approach to Runway 28R"
+      },
+      {
+        "entry": "G8L*",
+        "description": "Aircraft requesting / assigned a RNAV(GPS) Approach to Runway 28L"
+      },
+      {
+        "entry": "G8R*",
+        "description": "Aircraft requesting / assigned a RNAV(GPS) Approach to Runway 28R"
+      },
+      {
+        "entry": "G9R*",
+        "description": "RNAV (GPS) Approach Runway 19R"
+      },
+      {
+        "entry": "I8L*",
+        "description": "ILS Runway 28L during visual operations"
+      },
+      {
+        "entry": "I8R*",
+        "description": "ILS Runway 28R during visual operations"
+      },
+      {
+        "entry": "I9L*",
+        "description": "ILS Runway 19L"
+      },
+      {
+        "entry": "28L*",
+        "description": "ILS Runway 28L during .308 / in trail or a Visual Approach Runway 28L during visual operations"
+      },
+      {
+        "entry": "28R*",
+        "description": "ILS Runway 28R during .308 / in trail or a Visual Approach Runway 28L during visual operations"
+      },
+      {
+        "entry": "QBL*",
+        "description": "Quiet Bridge Visual Approach Runway 28L"
+      },
+      {
+        "entry": "QBR*",
+        "description": "Quiet Bridge Visual Approach Runway 28R"
+      },
+      {
+        "entry": "TTL*",
+        "description": "Tipp Toe Visual Approach Runway 28L"
+      },
+      {
+        "entry": "TTR*",
+        "description": "Tipp Toe Visual Approach Runway 28R"
+      },
+      {
+        "entry": "LFT",
+        "description": "Aircraft assigned the left runway"
+      },
+      {
+        "entry": "NSB",
+        "description": "Aircraft requesting a no side-by approach"
+      },
+      {
+        "entry": "RGT",
+        "description": "Aircraft assigned the right runway"
+      },
+      {
+        "entry": "TIS",
+        "description": "Aircraft has parallel or preceding arrival aircraft in sight and is maintaining visual separation."
+      },
+      {
+        "entry": "YSM",
+        "description": "Aircraft assigned YOSEM STAR"
+      },
+      {
+        "entry": "RNP",
+        "description": "Aircraft requesting / assigned a RNAV(RNP)"
+      },
+      {
+        "entry": "VSL",
+        "description": "Aircraft landing Runway 28L. Indicates pilot applied visual separation is applied with preceding aircraft"
+      },
+      {
+        "entry": "VSR",
+        "description": "Aircraft landing Runway 28R. Indicates pilot applied visual separation is applied with preceding aircraft"
+      }
+    ]
+  },
+  {
+    "id": "C",
+    "scratchpads": [
+      {
+        "entry": "AIS",
+        "description": "Airport In Sight"
+      },
+      {
+        "entry": "VA",
+        "description": "Aircraft assigned a visual approach"
+      },
+      {
+        "entry": "VS",
+        "description": "Aircraft landing Runway 12/30, 10R or 28R. Pilot applied or Tower applied visual separation with preceding aircraft"
+      },
+      {
+        "entry": "VSL",
+        "description": "Aircraft landing Runway 10L or 28L. Pilot applied or Tower applied visual separation with preceding aircraft"
+      }
+    ]
+  },
+  {
+    "id": "SFO",
+    "scratchpads": [
+      {
+        "entry": "LFT",
+        "description": "Arrival to the left runway"
+      },
+      {
+        "entry": "RGT",
+        "description": "Arrival to the right runway"
+      },
+      {
+        "entry": "VSL",
+        "description": "Aircraft landing instrument Runway 28L. Pilot applied or Tower applied visual separation with the preceding aircraft."
+      },
+      {
+        "entry": "VSR",
+        "description": "Aircraft landing instrument Runway 28R. Pilot applied or Tower applied visual separation with the preceding aircraft"
+      },
+      {
+        "entry": "2ER",
+        "description": "Aircraft flying a \"Bay Tour\""
+      },
+      {
+        "entry": "BJJ",
+        "description": "San Mateo Bridge"
+      },
+      {
+        "entry": "CTN",
+        "description": "Landing Seton Hospital"
+      },
+      {
+        "entry": "GGB",
+        "description": "Golden Gate Bridge"
+      },
+      {
+        "entry": "HPT",
+        "description": "Hunters Point"
+      },
+      {
+        "entry": "LCL",
+        "description": "No specific destination"
+      },
+      {
+        "entry": "MPH",
+        "description": "Mills Peninsula Hospital"
+      },
+      {
+        "entry": "OPN",
+        "description": "Operational law enforcement."
+      },
+      {
+        "entry": "PIX",
+        "description": "Photo Mission."
+      },
+      {
+        "entry": "TFC",
+        "description": "Traffic watch."
+      },
+      {
+        "entry": "STF",
+        "description": "Sanford University Hospital"
+      },
+      {
+        "entry": "STK",
+        "description": "Candlestick Point"
+      },
+      {
+        "entry": "TOW",
+        "description": "Banner Tow"
+      },
+      {
+        "entry": "USG",
+        "description": "Benioff Children's Hospital"
+      }
+    ]
+  },
+  {
+    "id": "OAK",
+    "scratchpads": [
+      {
+        "entry": "LFT",
+        "description": "Visual Approach to Runway 28L"
+      },
+      {
+        "entry": "G0L",
+        "description": "RNAV (GPS) Runway 10L Approach"
+      },
+      {
+        "entry": "G0R",
+        "description": "RNAV (GPS) Runway 10R Approach"
+      },
+      {
+        "entry": "GPS",
+        "description": "RNAV (GPS) Y Runway 12/30 Approach"
+      },
+      {
+        "entry": "G8L",
+        "description": "RNAV (GPS) Y Runway 28L Approach"
+      },
+      {
+        "entry": "G8R",
+        "description": "RNAV (GPS) Y Runway 28R Approach"
+      },
+      {
+        "entry": "Z8L",
+        "description": "RNAV (RNP) Z Runway 28L Approach"
+      },
+      {
+        "entry": "Z8R",
+        "description": "RNAV (RNP) Z Runway 28R Approach"
+      },
+      {
+        "entry": "Z8L",
+        "description": "RNZ (RNP) Z Runway 12/30 Approach"
+      },
+      {
+        "entry": "Z8L",
+        "description": "RNAV (RNP) Z Runway 28L Approach"
+      },
+      {
+        "entry": "ISS",
+        "description": "ILS Runway 28R Approach, Sidestep Runway 28L"
+      },
+      {
+        "entry": "III",
+        "description": "Coordination of Category 2 or 3 ILS Approach Procedure"
+      },
+      {
+        "entry": "LOC",
+        "description": "Localizer Approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "VOR",
+        "description": "VOR Approach"
+      },
+      {
+        "entry": "ATT",
+        "description": "ATT Park"
+      },
+      {
+        "entry": "BBR",
+        "description": "BBR"
+      },
+      {
+        "entry": "DPA",
+        "description": "Diablo Practice Area"
+      },
+      {
+        "entry": "GGB",
+        "description": "Golden Gate Bridge"
+      },
+      {
+        "entry": "SPB",
+        "description": "San Pablo Bay Practice Area"
+      },
+      {
+        "entry": "RB",
+        "description": "Right Base Entry"
+      },
+      {
+        "entry": "R30/R12",
+        "description": "Aircraft other than an air carrier cleared for the instrument approach advertised on the ATIS"
+      },
+      {
+        "entry": "LFT",
+        "description": "VFR aircraft assigned to Runway 28L"
+      },
+      {
+        "entry": "VS",
+        "description": "Aircraft landing Runway 12/30, 10R or 28R Pilot applied or Tower applied visual separation with the preceding aircraft"
+      },
+      {
+        "entry": "VSL",
+        "description": "Aircraft landing Runway 10L or 28L. Pilot applied or Tower applied visual separation with the preceding aircraft"
+      },
+      {
+        "entry": "ASL",
+        "description": "Alameda Shoreline Transition"
+      },
+      {
+        "entry": "DTB",
+        "description": "Down the Bay Transition"
+      },
+      {
+        "entry": "LCL",
+        "description": "No specific destination"
+      },
+      {
+        "entry": "OPN",
+        "description": "Operational law enforcement."
+      },
+      {
+        "entry": "PIX",
+        "description": "Photo Mission."
+      },
+      {
+        "entry": "TFC",
+        "description": "Traffic watch."
+      },
+      {
+        "entry": "2ER",
+        "description": "Aircraft flying a \"Bay Tour\""
+      },
+      {
+        "entry": "BNR",
+        "description": "Banner Tow Operation"
+      }
+    ]
+  },
+  {
+    "id": "SJC",
+    "scratchpads": [
+      {
+        "entry": "LFT",
+        "description": "Aircraft cleared for an instrument or visual approach to the left runway"
+      },
+      {
+        "entry": "RGT",
+        "description": "Aircraft cleared for an instrument or visual approach to the right runway"
+      },
+      {
+        "entry": "2ER",
+        "description": "Aircraft flying a \"Bay Tour\""
+      },
+      {
+        "entry": "TIS",
+        "description": "Traffic in sight."
+      },
+      {
+        "entry": "VSA",
+        "description": "Tower controlled aircraft is maintaining visual separation. NOTE ? VSA must be removed when no longer applicable"
+      },
+      {
+        "entry": "VS(L/R)",
+        "description": "Visual separation applied (trailing aircraft) plus assigned runway."
+      },
+      {
+        "entry": "V2I",
+        "description": "Required for aircraft departing VFR requesting an IFR flight plan on file"
+      },
+      {
+        "entry": "LCL",
+        "description": "No specific destination"
+      },
+      {
+        "entry": "OPN",
+        "description": "Operational law enforcement."
+      },
+      {
+        "entry": "PIX",
+        "description": "Photo Mission."
+      },
+      {
+        "entry": "TFC",
+        "description": "Traffic watch."
+      },
+      {
+        "entry": "RMC",
+        "description": "Regional Medical Center"
+      },
+      {
+        "entry": "VMC",
+        "description": "Valley Medical Center"
+      },
+      {
+        "entry": "GSM",
+        "description": "Good Samaritan Hospital"
+      },
+      {
+        "entry": "KST",
+        "description": "Kaiser Santa Clara"
+      },
+      {
+        "entry": "STF",
+        "description": "Sanford Hospital"
+      }
+    ]
+  },
+  {
+    "id": "SMF",
+    "scratchpads": [
+      {
+        "entry": "N",
+        "description": "Contact Approach"
+      },
+      {
+        "entry": "G",
+        "description": "RNAV Approach"
+      },
+      {
+        "entry": "P",
+        "description": "RNP Z Approach"
+      },
+      {
+        "entry": "I",
+        "description": "ILS Approach"
+      },
+      {
+        "entry": "II/III",
+        "description": "Coordination of Category 2 or 3 ILS Approach"
+      },
+      {
+        "entry": "E",
+        "description": "Localizer Approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "K",
+        "description": "High-key Maneuver"
+      },
+      {
+        "entry": "H",
+        "description": "Overhead Approach"
+      },
+      {
+        "entry": "C",
+        "description": "Circling Approach"
+      },
+      {
+        "entry": "D",
+        "description": "Departure"
+      },
+      {
+        "entry": "F",
+        "description": "Full Stop"
+      },
+      {
+        "entry": "O",
+        "description": "Option"
+      },
+      {
+        "entry": "M",
+        "description": "IFR Aircraft Executing the Published Missed Approach"
+      },
+      {
+        "entry": "Z",
+        "description": "Closed Traffic With Tower"
+      },
+      {
+        "entry": "L/R",
+        "description": "Landing East Runway (17L or 35R)"
+      }
+    ]
+  },
+  {
+    "id": "MRY",
+    "scratchpads": [
+      {
+        "entry": "VA",
+        "description": "aircraft assigned a Visual Approach"
+      },
+      {
+        "entry": "CVA",
+        "description": "Aircraft assigned a Carmel CVFP Runway 28L"
+      },
+      {
+        "entry": "ILS or IL(M/P)",
+        "description": "Aircraft assigned an ILS Approach to Runway 10R"
+      },
+      {
+        "entry": "LOC or LO(M/P)",
+        "description": "Aircraft assigned a LOC/DME Approach to Runway 28L"
+      },
+      {
+        "entry": "8Y (M/P)",
+        "description": "Aircraft assigned a RNAV (GPS) Y Runway 28L"
+      },
+      {
+        "entry": "8Z",
+        "description": "Aircraft assigned a RNAV (RNP) Z Runway 28L"
+      },
+      {
+        "entry": "0R (M/P)",
+        "description": "Aircraft assigned a RNAV (GPS) Runway 10R"
+      },
+      {
+        "entry": "LCL",
+        "description": "No specific destination"
+      },
+      {
+        "entry": "OPN",
+        "description": "Operational law enforcement."
+      },
+      {
+        "entry": "PIX",
+        "description": "Photo Mission."
+      },
+      {
+        "entry": "TFC",
+        "description": "Traffic watch."
+      },
+      {
+        "entry": "2ER",
+        "description": "Aircraft is request or on a Bay Tour"
+      },
+      {
+        "entry": "BNR",
+        "description": "Banner Tow Operation"
+      },
+      {
+        "entry": "BSR",
+        "description": "Flying to BSR (out and back)"
+      }
+    ]
+  },
+  {
+    "id": "RNO",
+    "scratchpads": [
+      {
+        "entry": "N",
+        "description": "Contact Approach"
+      },
+      {
+        "entry": "G",
+        "description": "RNAV Approach to the West Runway"
+      },
+      {
+        "entry": "GL / GR",
+        "description": "RNAV Approach to the East Runway"
+      },
+      {
+        "entry": "I",
+        "description": "ILS Approach"
+      },
+      {
+        "entry": "E",
+        "description": "Localizer Approach"
+      },
+      {
+        "entry": "E",
+        "description": "Localizer Approach"
+      },
+      {
+        "entry": "RV",
+        "description": "RNAV Visual Approach"
+      },
+      {
+        "entry": "V",
+        "description": "VOR-D Approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "H",
+        "description": "Overhead Maneuver"
+      },
+      {
+        "entry": "OT",
+        "description": "Over-The-Top Arrival"
+      },
+      {
+        "entry": "MED",
+        "description": "Helicopter Arrival to a Medical Center"
+      },
+      {
+        "entry": "LD",
+        "description": "Left downwind (Runway 17 LD is East Runway; Runway 35 LD is West Runway)"
+      },
+      {
+        "entry": "RD",
+        "description": "Right downwind (Runway 17 RD is West Runway; Runway 35 RD is East Runway)"
+      },
+      {
+        "entry": "Z",
+        "description": "Closed Traffic With Tower"
+      },
+      {
+        "entry": "L/R",
+        "description": "Landing East Runway (17L or 35R)"
+      },
+      {
+        "entry": "17L",
+        "description": "Arrival to Runway 17L"
+      },
+      {
+        "entry": "R26",
+        "description": "Arrival to Runway 26"
+      },
+      {
+        "entry": "35R",
+        "description": "Arrival to Runway 35R"
+      },
+      {
+        "entry": "R8",
+        "description": "Arrival to Runway 8"
+      },
+      {
+        "entry": "D",
+        "description": "Departing Reno Terminal Area"
+      },
+      {
+        "entry": "F",
+        "description": "Full Stop"
+      },
+      {
+        "entry": "M",
+        "description": "Aircraft Expected to Execute the Published Missed Approach"
+      },
+      {
+        "entry": "O",
+        "description": "Option"
+      },
+      {
+        "entry": "R",
+        "description": "VFR Aircraft Assigned Runway Heading"
+      },
+      {
+        "entry": "Z",
+        "description": "Closed Traffic With Tower"
+      },
+      {
+        "entry": "Z",
+        "description": "Closed Traffic With Tower"
+      },
+      {
+        "entry": "1",
+        "description": "VFR departure heading 030"
+      },
+      {
+        "entry": "2",
+        "description": "VFR Departure heading 130"
+      },
+      {
+        "entry": "3",
+        "description": "VFR Departure Heading 190"
+      },
+      {
+        "entry": "4",
+        "description": "VFR Departure Heading 300"
+      }
+    ]
+  },
+  {
+    "id": "BAB",
+    "scratchpads": [
+      {
+        "entry": "G",
+        "description": "RNAV Approach"
+      },
+      {
+        "entry": "I",
+        "description": "ILS Approach"
+      },
+      {
+        "entry": "T",
+        "description": "TACAN"
+      },
+      {
+        "entry": "N",
+        "description": "Contact Approach"
+      },
+      {
+        "entry": "E",
+        "description": "Localizer Approach"
+      },
+      {
+        "entry": "HT",
+        "description": "High TACAN"
+      },
+      {
+        "entry": "HI",
+        "description": "High ILS"
+      },
+      {
+        "entry": "K",
+        "description": "High-key Maneuver"
+      },
+      {
+        "entry": "H",
+        "description": "Overhead Approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "D",
+        "description": "Departure"
+      },
+      {
+        "entry": "F",
+        "description": "Full Stop"
+      },
+      {
+        "entry": "O",
+        "description": "Option"
+      },
+      {
+        "entry": "M",
+        "description": "IFR Aircraft Executing the Published Missed Approach"
+      },
+      {
+        "entry": "Z",
+        "description": "Closed Traffic With Tower"
+      },
+      {
+        "entry": "SI",
+        "description": "VFR Straight In"
+      },
+      {
+        "entry": "3E",
+        "description": "3000, east of Field (use with Automated Point-Out)"
+      },
+      {
+        "entry": "5SI",
+        "description": "5-mile Straight-in (use with Automated Point-Out)"
+      }
+    ]
+  },
+  {
+    "id": "HWD",
+    "scratchpads": [
+      {
+        "entry": "GPS",
+        "description": "GPS Approach"
+      },
+      {
+        "entry": "LOC",
+        "description": "Localizer/DME Approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "VOR",
+        "description": "VOR Approach"
+      },
+      {
+        "entry": "2ER",
+        "description": "Aircraft flying a \"Bay Tour\""
+      },
+      {
+        "entry": "TFC",
+        "description": "Traffic Watch"
+      },
+      {
+        "entry": "BNR",
+        "description": "Banner Tow"
+      }
+    ]
+  },
+  {
+    "id": "LVK",
+    "scratchpads": [
+      {
+        "entry": "GPS",
+        "description": "GPS Approach"
+      },
+      {
+        "entry": "GPP",
+        "description": "GPS with Published Missed"
+      },
+      {
+        "entry": "GPN",
+        "description": "GPS with no service after"
+      },
+      {
+        "entry": "ILS",
+        "description": "ILS Approach"
+      },
+      {
+        "entry": "ILP",
+        "description": "ILS with Published Missed"
+      },
+      {
+        "entry": "ILN",
+        "description": "ILS with no services after"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      }
+    ]
+  },
+  {
+    "id": "MHR",
+    "scratchpads": [
+      {
+        "entry": "N",
+        "description": "Contact Approach"
+      },
+      {
+        "entry": "G",
+        "description": "RNAV Approach"
+      },
+      {
+        "entry": "P",
+        "description": "RNP Z Approach"
+      },
+      {
+        "entry": "I",
+        "description": "ILS Approach"
+      },
+      {
+        "entry": "II/III",
+        "description": "Coordination of Category 2 or 3 ILS Approach"
+      },
+      {
+        "entry": "E",
+        "description": "Localizer Approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "V",
+        "description": "VOR/DME Approach"
+      },
+      {
+        "entry": "H",
+        "description": "Overhead Approach"
+      },
+      {
+        "entry": "C",
+        "description": "Circling Approach"
+      },
+      {
+        "entry": "D",
+        "description": "Departure"
+      },
+      {
+        "entry": "F",
+        "description": "Full Stop"
+      },
+      {
+        "entry": "O",
+        "description": "Option"
+      },
+      {
+        "entry": "M",
+        "description": "IFR Aircraft Executing the Published Missed Approach"
+      },
+      {
+        "entry": "Z",
+        "description": "Closed Traffic With Tower"
+      }
+    ]
+  },
+  {
+    "id": "MOD",
+    "scratchpads": [
+      {
+        "entry": "GPS",
+        "description": "GPS Approach"
+      },
+      {
+        "entry": "GPP",
+        "description": "GPS with Published Missed"
+      },
+      {
+        "entry": "GPN",
+        "description": "GPS with no service after"
+      },
+      {
+        "entry": "ILS",
+        "description": "ILS Approach"
+      },
+      {
+        "entry": "ILP",
+        "description": "ILS with Published Missed"
+      },
+      {
+        "entry": "ILN",
+        "description": "ILS with no services after"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "VOR",
+        "description": "VOR Approach"
+      },
+      {
+        "entry": "VOP",
+        "description": "VOR with Published Missed"
+      },
+      {
+        "entry": "VON",
+        "description": "VOR with no services after"
+      }
+    ]
+  },
+  {
+    "id": "NUQ",
+    "scratchpads": [
+      {
+        "entry": "ILS",
+        "description": "ILS Approach"
+      },
+      {
+        "entry": "LOC",
+        "description": "Localizer approach"
+      },
+      {
+        "entry": "TAC",
+        "description": "TACAN Approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "LCL",
+        "description": "No specific destination"
+      },
+      {
+        "entry": "OPN",
+        "description": "Operational law enforcement"
+      },
+      {
+        "entry": "PIX",
+        "description": "Photo Mission"
+      },
+      {
+        "entry": "2ER",
+        "description": "Aircraft flying a \"Bay Tour\""
+      },
+      {
+        "entry": "TFC",
+        "description": "Traffic Watch"
+      },
+      {
+        "entry": "BNR",
+        "description": "Banner Tow"
+      }
+    ]
+  },
+  {
+    "id": "PAO",
+    "scratchpads": [
+      {
+        "entry": "GPS",
+        "description": "GPS Approach"
+      },
+      {
+        "entry": "VOR",
+        "description": "VOR approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "LCL",
+        "description": "No specific destination"
+      },
+      {
+        "entry": "OPN",
+        "description": "Operational law enforcement"
+      },
+      {
+        "entry": "PIX",
+        "description": "Photo Mission"
+      },
+      {
+        "entry": "2ER",
+        "description": "Aircraft flying a \"Bay Tour\""
+      },
+      {
+        "entry": "TFC",
+        "description": "Traffic Watch"
+      },
+      {
+        "entry": "BNR",
+        "description": "Banner Tow"
+      }
+    ]
+  },
+  {
+    "id": "RHV",
+    "scratchpads": [
+      {
+        "entry": "RNY",
+        "description": "RNAV Y Approach"
+      },
+      {
+        "entry": "RNZ",
+        "description": "RNAV Z approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "LCL",
+        "description": "No specific destination"
+      },
+      {
+        "entry": "OPN",
+        "description": "Operational law enforcement"
+      },
+      {
+        "entry": "PIX",
+        "description": "Photo Mission"
+      },
+      {
+        "entry": "2ER",
+        "description": "Aircraft flying a \"Bay Tour\""
+      },
+      {
+        "entry": "TFC",
+        "description": "Traffic Watch"
+      },
+      {
+        "entry": "BNR",
+        "description": "Banner Tow"
+      }
+    ]
+  },
+  {
+    "id": "SAC",
+    "scratchpads": [
+      {
+        "entry": "N",
+        "description": "Contact Approach"
+      },
+      {
+        "entry": "G",
+        "description": "RNAV Approach"
+      },
+      {
+        "entry": "I",
+        "description": "ILS Approach"
+      },
+      {
+        "entry": "V",
+        "description": "VOR Approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "C",
+        "description": "Circling Approach"
+      },
+      {
+        "entry": "D",
+        "description": "Departure"
+      },
+      {
+        "entry": "F",
+        "description": "Full Stop"
+      },
+      {
+        "entry": "O",
+        "description": "Option"
+      },
+      {
+        "entry": "M",
+        "description": "IFR Aircraft Executing the Published Missed Approach"
+      },
+      {
+        "entry": "Z",
+        "description": "Closed Traffic With Tower"
+      }
+    ]
+  },
+  {
+    "id": "SCK",
+    "scratchpads": [
+      {
+        "entry": "GPS",
+        "description": "GPS Approach"
+      },
+      {
+        "entry": "GPP",
+        "description": "GPS with Published Missed"
+      },
+      {
+        "entry": "GPN",
+        "description": "GPS with no service after"
+      },
+      {
+        "entry": "ILS",
+        "description": "ILS Approach"
+      },
+      {
+        "entry": "ILP",
+        "description": "ILS with Published Missed"
+      },
+      {
+        "entry": "ILN",
+        "description": "ILS with no services after"
+      },
+      {
+        "entry": "VOR",
+        "description": "VOR Approach"
+      },
+      {
+        "entry": "VOP",
+        "description": "VOR with Published Missed"
+      },
+      {
+        "entry": "VON",
+        "description": "VOR with no services after"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      }
+    ]
+  },
+  {
+    "id": "SNS",
+    "scratchpads": [
+      {
+        "entry": "G1",
+        "description": "GPS RWY 13 Approach"
+      },
+      {
+        "entry": "G3",
+        "description": "GPS RWY 31"
+      },
+      {
+        "entry": "SI",
+        "description": "ILS RWY 31 Approach"
+      },
+      {
+        "entry": "SL",
+        "description": "Localizer RWY 31 Approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "SR",
+        "description": "VOR RWY 13 Approach"
+      },
+      {
+        "entry": "2ER",
+        "description": "Bay Tour"
+      },
+      {
+        "entry": "BSR",
+        "description": "Following coastline south"
+      },
+      {
+        "entry": "SVR",
+        "description": "Special VFR"
+      },
+      {
+        "entry": "SVY",
+        "description": "Salinas Valley Practice area"
+      }
+    ]
+  },
+  {
+    "id": "SQL",
+    "scratchpads": [
+      {
+        "entry": "RNY",
+        "description": "RNAV Y Approach"
+      },
+      {
+        "entry": "RNZ",
+        "description": "RNAV Z approach"
+      },
+      {
+        "entry": "VA",
+        "description": "Visual Approach"
+      },
+      {
+        "entry": "LCL",
+        "description": "No specific destination"
+      },
+      {
+        "entry": "OPN",
+        "description": "Operational law enforcement"
+      },
+      {
+        "entry": "PIX",
+        "description": "Photo Mission"
+      },
+      {
+        "entry": "2ER",
+        "description": "Aircraft flying a \"Bay Tour\""
+      },
+      {
+        "entry": "V2I",
+        "description": "VFR departure requesting IFR on file"
+      },
+      {
+        "entry": "SVR",
+        "description": "Special VFR"
+      },
+      {
+        "entry": "BJJ",
+        "description": "VFR landing SFO via San Mateo Bridge"
+      },
+      {
+        "entry": "TFC",
+        "description": "Traffic Watch"
+      },
+      {
+        "entry": "BNR",
+        "description": "Banner Tow"
+      }
+    ]
+  }
+]
