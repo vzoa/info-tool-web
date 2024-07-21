@@ -4,7 +4,7 @@ namespace ZoaReference.Features.Routes.Repositories;
 
 public class AliasRouteRuleRepository
 {
-    private List<AliasRouteRule> _repository = new List<AliasRouteRule>();
+    private List<AliasRouteRule> _repository = [];
 
     public void AddRule(AliasRouteRule rule) => _repository.Add(rule);
     

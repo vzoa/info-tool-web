@@ -11,14 +11,12 @@ public partial class FetchAndStoreAirports(ILogger<FetchAndStoreAirports> logger
     public async Task Invoke()
     {
         var httpClient = httpClientFactory.CreateClient();
-        
-        var returnDict = new Dictionary<string, Airport>();
-        string responseBody = await httpClient.GetStringAsync(appSettings.CurrentValue.Urls.VatspyData);
+        var responseBody = await httpClient.GetStringAsync(appSettings.CurrentValue.Urls.VatspyData);
 
         using (var reader = new StringReader(responseBody))
         {
-            bool inAirportsSection = false;
-            for (string? line = reader.ReadLine(); line is not null; line = reader.ReadLine())
+            var inAirportsSection = false;
+            for (var line = reader.ReadLine(); line is not null; line = reader.ReadLine())
             {
                 // Skip if line is empty or a commented line starting with ;
                 if (line.Trim() == "" || line.StartsWith(';'))
@@ -30,7 +28,7 @@ public partial class FetchAndStoreAirports(ILogger<FetchAndStoreAirports> logger
                 if (SectionHeaderRegex().IsMatch(line))
                 {
                     // Section header found. Check if it's the Airports section
-                    string header = SectionHeaderRegex().Match(line).Groups[1].Value;
+                    var header = SectionHeaderRegex().Match(line).Groups[1].Value;
                     inAirportsSection = header.Equals("AIRPORTS", StringComparison.OrdinalIgnoreCase);
                     continue; // Skip parsing current line because we know it's just a header, no data
                 }
@@ -45,7 +43,6 @@ public partial class FetchAndStoreAirports(ILogger<FetchAndStoreAirports> logger
                     var latitude = double.Parse(fields[2].Trim());
                     var longitude = double.Parse(fields[3].Trim());
                     var iata = fields[4].Trim();
-                    var lid = iata;
                     var fir = fields[5].Trim();
                     var isPseudo = int.Parse(fields[6].Trim().Substring(0, 1)) == 1;
 
@@ -53,7 +50,7 @@ public partial class FetchAndStoreAirports(ILogger<FetchAndStoreAirports> logger
                     {
                         // A few Australian airports have multiple entries, so we need to use TryAdd to not throw exception
                         airportRepository.TryAddAirport(icao,
-                            new Airport(icao, iata, lid, name, fir, latitude, longitude));
+                            new Airport(icao, iata, iata, name, fir, latitude, longitude));
                     }
                 }
             }

@@ -1,0 +1,67 @@
+﻿@page "/scratchpads"
+@using ZoaReference.Features.Scratchpads.Models
+@using ZoaReference.Features.Scratchpads.Repositories
+@rendermode InteractiveServer
+
+@inject IJSRuntime Js
+@inject ScratchpadsRepository ScratchpadRepository
+@inject ProtectedSessionStorage ProtectedSessionStore
+
+<div class="ml-1 mb-4">
+    <select @ref="_dropdown" @bind:get="_selectedFacilityId" @bind:set="UpdateSelectedFacility" class="p-2 bg-gray-700 text-gray-100 w-64">
+        @foreach (var facility in _facilities)
+        {
+            <option value="@facility" class="text-gray-100">@facility</option>
+        }
+    </select>
+</div>
+
+<div class="text-s">
+    <QuickGrid Items="@_selectedScratchpads.AsQueryable()">
+        <PropertyColumn Title="Scratchpad" Property="@(m => m.Entry)" Sortable="true" />
+        <PropertyColumn Title="Description" Property="@(m => m.Description)" Sortable="true" />
+    </QuickGrid>
+</div>
+
+@code {
+    private IEnumerable<string> _facilities = [];
+    private string _selectedFacilityId = "";
+    private IEnumerable<Scratchpad> _selectedScratchpads = [];
+    private ElementReference _dropdown;
+
+    protected override void OnInitialized()
+    {
+        _facilities = ScratchpadRepository.AllAirportIds.OrderBy(s => s);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var savedStateTask = await ProtectedSessionStore.GetAsync<string>("scratchpadsSelectedFacilityId");
+            if (savedStateTask is { Success: true, Value: not null })
+            {
+                if (ScratchpadRepository.TryGetValue(savedStateTask.Value, out var foundScratchpads))
+                {
+                    _selectedFacilityId = savedStateTask.Value;
+                    _selectedScratchpads = foundScratchpads!;
+                }
+                StateHasChanged();
+            }
+
+            await Js.InvokeVoidAsync("SetFocusToElement", _dropdown);
+        }
+    }
+    
+    
+
+    private async Task UpdateSelectedFacility(string value)
+    {
+        if (ScratchpadRepository.TryGetValue(value, out var foundScratchpads))
+        {
+            _selectedFacilityId = value;
+            _selectedScratchpads = foundScratchpads!;
+            await ProtectedSessionStore.SetAsync("scratchpadsSelectedFacilityId", _selectedFacilityId);
+        }
+    }
+}

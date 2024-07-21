@@ -6,7 +6,7 @@ public class AircraftTypeRepository
 {
     public IEnumerable<AircraftType> AllAircraftTypes => _repository;
     
-    private readonly List<AircraftType> _repository = new();
+    private readonly List<AircraftType> _repository = [];
 
     public void AddAircraftType(AircraftType type) => _repository.Add(type);
     
