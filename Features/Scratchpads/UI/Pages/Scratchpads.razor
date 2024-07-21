@@ -1,7 +1,6 @@
 ﻿@page "/scratchpads"
 @using ZoaReference.Features.Scratchpads.Models
 @using ZoaReference.Features.Scratchpads.Repositories
-@using ZoaReference.Features.VnasData.Models
 @rendermode InteractiveServer
 
 @inject IJSRuntime Js
@@ -19,7 +18,7 @@
 
 <div class="text-s">
     <QuickGrid Items="@_selectedScratchpads.AsQueryable()">
-        <PropertyColumn Title="Scratchpad" Property="@(m => m.Entry)" IsDefaultSortColumn Sortable="true" />
+        <PropertyColumn Title="Scratchpad" Property="@(m => m.Entry)" Sortable="true" />
         <PropertyColumn Title="Description" Property="@(m => m.Description)" Sortable="true" />
     </QuickGrid>
 </div>
@@ -28,20 +27,11 @@
     private IEnumerable<string> _facilities = [];
     private string _selectedFacilityId = "";
     private IEnumerable<Scratchpad> _selectedScratchpads = [];
-
-    private readonly GridSort<VideoMap> _sortById = GridSort<VideoMap>
-        .ByAscending(p => p.StarsId);
-
-    // private IQueryable<Scratchpad> FilteredScratchpads =>
-    //     ScratchpadRepository.TryGetValue(_selectedFacilityId, out var foundScratchpads)
-    //         ? foundScratchpads!.AsQueryable()
-    //         : Enumerable.Empty<Scratchpad>().AsQueryable();
-
     private ElementReference _dropdown;
 
     protected override void OnInitialized()
     {
-        _facilities = ScratchpadRepository.AllAirportIds;
+        _facilities = ScratchpadRepository.AllAirportIds.OrderBy(s => s);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -62,6 +52,8 @@
             await Js.InvokeVoidAsync("SetFocusToElement", _dropdown);
         }
     }
+    
+    
 
     private async Task UpdateSelectedFacility(string value)
     {
