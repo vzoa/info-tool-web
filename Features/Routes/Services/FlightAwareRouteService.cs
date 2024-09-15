@@ -7,7 +7,7 @@ using ZoaReference.Features.Routes.Models;
 
 namespace ZoaReference.Features.Routes.Services;
 
-public partial class FlightAwareRouteService(IHttpClientFactory httpClientFactory, IOptionsMonitor<AppSettings> appSettings, IMemoryCache cache)
+public partial class FlightAwareRouteService(IHttpClientFactory httpClientFactory, IOptionsMonitor<AppSettings> appSettings, IMemoryCache cache, ILogger<FlightAwareRouteService> logger)
 {
     public async Task<AirportPairRouteSummary> FetchRoutesAsync(string departureIcao, string arrivalIcao)
     {
@@ -18,6 +18,7 @@ public partial class FlightAwareRouteService(IHttpClientFactory httpClientFactor
         }
 
         // If not, fetch result from FlightAware
+        var url = MakeUrl(departureIcao, arrivalIcao);
         try
         {
             // Setup return object
@@ -26,7 +27,7 @@ public partial class FlightAwareRouteService(IHttpClientFactory httpClientFactor
             // Open FlightAware IFR routing page
             var client = httpClientFactory.CreateClient();
             client.DefaultRequestHeaders.UserAgent.TryParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0");
-            await using var stream = await client.GetStreamAsync(MakeUrl(departureIcao, arrivalIcao));
+            await using var stream = await client.GetStreamAsync(url);
             var parser = new HtmlParser();
             using var document = await parser.ParseDocumentAsync(stream);
 
@@ -101,6 +102,7 @@ public partial class FlightAwareRouteService(IHttpClientFactory httpClientFactor
         }
         catch (HttpRequestException e)
         {
+            logger.LogError("Error fetching FlightAware url {url}: {error}", url, e);
             throw e;
         }
     }
