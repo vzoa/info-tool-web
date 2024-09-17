@@ -80,54 +80,63 @@
         </div>
     }
     
-    @if (_showFlightAwareLoading || _displayedFlightAwareRoutes is not null)
+    @* @if (_showFlightAwareLoading || _displayedFlightAwareRoutes is not null) *@
+    @* { *@
+    @*     <div class="border border-slate-600 p-2"> *@
+    @*         <h1 class="text-2xl">Real World Routes</h1> *@
+    @*         @if (_showFlightAwareLoading) *@
+    @*         { *@
+    @*             <Spinner /> *@
+    @*         } *@
+    @*         else if (_displayedFlightAwareRoutes is not null) *@
+    @*         { *@
+    @*             <QuickGrid Items="@_displayedFlightAwareRoutes.FlightRouteSummaries.AsQueryable()"> *@
+    @*                 <PropertyColumn Property="@(p => p.RouteFrequency)" Title="Freq" /> *@
+    @*                 <PropertyColumn Property="@(p => p.Route)" Title="Freq" /> *@
+    @*                 <TemplateColumn Title="Altitude"> *@
+    @*                     @if (context.MinAltitude is null && context.MaxAltitude is null) *@
+    @*                     { *@
+    @*                         <span></span> *@
+    @*                     } *@
+    @*                     else if (context.MinAltitude is null) *@
+    @*                     { *@
+    @*                         <span>@ToFlightLevel(context.MaxAltitude)</span> *@
+    @*                     } *@
+    @*                     else if (context.MaxAltitude is null) *@
+    @*                     { *@
+    @*                         <span>@ToFlightLevel(@context.MinAltitude)</span> *@
+    @*                     } *@
+    @*                     else *@
+    @*                     { *@
+    @*                         <span>@ToFlightLevel(context.MinAltitude) - @ToFlightLevel(context.MaxAltitude)</span> *@
+    @*                     } *@
+    @*                 </TemplateColumn> *@
+    @*             </QuickGrid> *@
+    @*              *@
+    @*             <QuickGrid Items="@_displayedFlightAwareRoutes.MostRecent.AsQueryable()"> *@
+    @*                 <PropertyColumn Property="@(p => p.Callsign)" /> *@
+    @*                 <PropertyColumn Property="@(p => p.AircraftIcaoId)" Title="Type" /> *@
+    @*                 <PropertyColumn Property="@(p => p.Route)" /> *@
+    @*                 <TemplateColumn Title="Altitude"> *@
+    @*                     <span>@ToFlightLevel(context.Altitude)</span> *@
+    @*                 </TemplateColumn> *@
+    @*             </QuickGrid> *@
+    @*         } *@
+    @*         else if (_isFlightAwareError) *@
+    @*         { *@
+    @*             <p>Error loading real world routes. Try visiting <a target="_blank" href="@FlightAware.MakeUrl(_routeForm.DepartureId, _routeForm.ArrivalId)">FlightAware</a> directly.</p> *@
+    @*         } *@
+    @*     </div>    *@
+    @* } *@
+
+    @if (!string.IsNullOrEmpty(_routeForm.DepartureId) && !string.IsNullOrEmpty(_routeForm.ArrivalId))
     {
         <div class="border border-slate-600 p-2">
             <h1 class="text-2xl">Real World Routes</h1>
-            @if (_showFlightAwareLoading)
-            {
-                <Spinner />
-            }
-            else if (_displayedFlightAwareRoutes is not null)
-            {
-                <QuickGrid Items="@_displayedFlightAwareRoutes.FlightRouteSummaries.AsQueryable()">
-                    <PropertyColumn Property="@(p => p.RouteFrequency)" Title="Freq" />
-                    <PropertyColumn Property="@(p => p.Route)" Title="Freq" />
-                    <TemplateColumn Title="Altitude">
-                        @if (context.MinAltitude is null && context.MaxAltitude is null)
-                        {
-                            <span></span>
-                        }
-                        else if (context.MinAltitude is null)
-                        {
-                            <span>@ToFlightLevel(context.MaxAltitude)</span>
-                        }
-                        else if (context.MaxAltitude is null)
-                        {
-                            <span>@ToFlightLevel(@context.MinAltitude)</span>
-                        }
-                        else
-                        {
-                            <span>@ToFlightLevel(context.MinAltitude) - @ToFlightLevel(context.MaxAltitude)</span>
-                        }
-                    </TemplateColumn>
-                </QuickGrid>
-                
-                <QuickGrid Items="@_displayedFlightAwareRoutes.MostRecent.AsQueryable()">
-                    <PropertyColumn Property="@(p => p.Callsign)" />
-                    <PropertyColumn Property="@(p => p.AircraftIcaoId)" Title="Type" />
-                    <PropertyColumn Property="@(p => p.Route)" />
-                    <TemplateColumn Title="Altitude">
-                        <span>@ToFlightLevel(context.Altitude)</span>
-                    </TemplateColumn>
-                </QuickGrid>
-            }
-            else if (_isFlightAwareError)
-            {
-                <p>Error loading real world routes. Try visiting <a target="_blank" href="@FlightAware.MakeUrl(_routeForm.DepartureId, _routeForm.ArrivalId)">FlightAware</a> directly.</p>
-            }
-        </div>   
+            <p>View on <a target="_blank" href="@FlightAware.MakeUrl(_routeForm.DepartureId, _routeForm.ArrivalId)" class="underline">FlightAware</a>.</p>
+        </div>
     }
+
 </div>
 
 @code {
