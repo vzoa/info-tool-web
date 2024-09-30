@@ -833,10 +833,10 @@ public class TowerListConfiguration
 public class TowerLocation
 {
     [JsonPropertyName("lat")]
-    public int Lat { get; set; }
+    public double Lat { get; set; }
 
     [JsonPropertyName("lon")]
-    public int Lon { get; set; }
+    public double Lon { get; set; }
 }
 
 public class Transition
