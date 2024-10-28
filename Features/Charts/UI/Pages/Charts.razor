@@ -131,6 +131,8 @@
         _airports.Add(newAirport);
         _airportInputShown = false;
         _airportForm.AirportId = "";
+
+        await UpdateCharts(newAirport.Id);
         
         var savedCustomAirportsTask = await ProtectedSessionStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
         if (savedCustomAirportsTask is { Success: true, Value: not null })
