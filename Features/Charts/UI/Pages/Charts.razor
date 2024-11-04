@@ -8,6 +8,7 @@
 @inject AviationApiChartService AviationApiChartService
 @inject IOptionsMonitor<AppSettings> AppSettings
 @inject ProtectedSessionStorage ProtectedSessionStore
+@inject IJSRuntime Js
 
 
 <SectionContent SectionName="sub-nav">
@@ -50,7 +51,7 @@
 
 <div class="flex grow">
     <div class="w-1/3">
-        <input @ref="@_filterInput" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" type="text" @bind="_filterInputText" @bind:event="oninput" placeholder="Filter"/>
+        <input @ref="@_filterInput" id="filterInput" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40" type="text" @bind="_filterInputText" @bind:event="oninput" placeholder="Filter"/>
         <div class="flex flex-col justify-start items-start gap-y-4">
             @foreach (var charts in new List<List<Chart>> { FilteredCharts.Info, FilteredCharts.Sid, FilteredCharts.Star })
             {
@@ -248,6 +249,7 @@
         var charts = await AviationApiChartService.GetChartsForId(id);
         _organizedCharts = OrganizeCharts(charts);
         _filterInputText = "";
+        await Js.InvokeVoidAsync("SetFocusToId", "filterInput");
     }
 
     private async Task UpdateDisplayedChart(Chart? chart)
