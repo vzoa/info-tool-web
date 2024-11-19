@@ -7,6 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSystemd();
 
+// Required for Healthcheck
+builder.Services.AddControllers();
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -41,14 +44,18 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 var cacheMaxAgeOneHour = (60 * 60).ToString();
-app.UseStaticFiles(new StaticFileOptions {
+app.UseStaticFiles(new StaticFileOptions
+{
     OnPrepareResponse = ctx =>
     {
         ctx.Context.Response.Headers.Append(
             "Cache-Control", $"public, max-age={cacheMaxAgeOneHour}");
-    }});
+    }
+});
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+app.MapControllers();
 
 app.Run();
