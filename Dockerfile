@@ -25,7 +25,7 @@ RUN dotnet publish "ZoaReference.csproj" -c $BUILD_CONFIGURATION -o /app/publish
 
 FROM base AS final
 RUN apt-get update \
-    && apt-get install -y wget
+    && apt-get install -y wget curl
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "ZoaReference.dll"]
