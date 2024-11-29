@@ -21,7 +21,9 @@
                     <button class="@MakeAirportButtonClass(airport)" @onclick="() => UpdateCharts(airport.Id)">
                         @FormatAirportId(airport)
                     </button>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" class="stroke-gray-100 w-4 h-4 absolute top-1 -right-4 hover:stroke-red-500 transition-colors hover:cursor-pointer" @onclick="() => RemoveAirport(airport)">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                         class="stroke-gray-100 w-4 h-4 absolute top-1 -right-4 hover:stroke-red-500 transition-colors hover:cursor-pointer"
+                         @onclick="() => RemoveAirport(airport)">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </div>
@@ -35,14 +37,17 @@
         }
         <button @onclick="ShowAirportInput">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
+                <path
+                    d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
             </svg>
         </button>
         @if (_airportInputShown)
         {
             <EditForm Model="@_airportForm" OnValidSubmit="@AirportSubmit">
                 <DataAnnotationsValidator/>
-                <InputText @ref="_airportInputReference" @bind-Value="_airportForm.AirportId" id="airportInput" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-24" placeholder="FAA/ICAO"/>
+                <InputText @ref="_airportInputReference" @bind-Value="_airportForm.AirportId" id="airportInput"
+                           class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-24"
+                           placeholder="FAA/ICAO"/>
                 <ValidationMessage For="() => _airportForm.AirportId"/>
             </EditForm>
         }
@@ -52,8 +57,12 @@
 <div class="flex grow">
     <div class="w-1/3">
         <div class="flex items-center mb-2 ml-1">
-            <input @ref="@_filterInput" id="filterInput" class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-40" type="text" @bind="_filterInputText" @bind:event="oninput" placeholder="Filter"/>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" class="stroke-gray-100 w-4 h-4 hover:stroke-red-500 transition-colors hover:cursor-pointer ml-1" @onclick="async () => await ClearFilterInput()">
+            <input @ref="@_filterInput" id="filterInput"
+                   class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-40"
+                   type="text" @bind="_filterInputText" @bind:event="oninput" placeholder="Filter" autocomplete="off"/>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                 class="stroke-gray-100 w-4 h-4 hover:stroke-red-500 transition-colors hover:cursor-pointer ml-1"
+                 @onclick="async () => await ClearFilterInput()">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
         </div>
@@ -66,7 +75,8 @@
                     <div class="flex flex-wrap justify-start items-start">
                         @foreach (var chart in charts)
                         {
-                            <button class="@MakeChartButtonClass(chart)" @onclick="() => UpdateDisplayedChart(chart)">@chart.ChartName</button>
+                            <button class="@MakeChartButtonClass(chart)"
+                                    @onclick="() => UpdateDisplayedChart(chart)">@chart.ChartName</button>
                         }
                     </div>
                 }
@@ -77,7 +87,8 @@
                 <div class="flex flex-wrap justify-start items-start">
                     @foreach (var chart in FilteredCharts.Approach[runwayGroup])
                     {
-                        <button class="@MakeChartButtonClass(chart)" @onclick="() => UpdateDisplayedChart(chart)">@chart.ChartName</button>
+                        <button class="@MakeChartButtonClass(chart)"
+                                @onclick="() => UpdateDisplayedChart(chart)">@chart.ChartName</button>
                     }
                 </div>
             }
@@ -92,7 +103,8 @@
                     <div class="flex gap-2 items-center text-xs mb-3">
                         @foreach (var chartPage in _displayedChart.Pages.OrderBy(p => p.PageNumber))
                         {
-                            <button class="@MakePageButtonClass(chartPage)" @onclick="() => UpdateDisplayedChartPage(chartPage)">@($"Pg. {chartPage.PageNumber}")</button>
+                            <button class="@MakePageButtonClass(chartPage)"
+                                    @onclick="() => UpdateDisplayedChartPage(chartPage)">@($"Pg. {chartPage.PageNumber}")</button>
                         }
                     </div>
                 }
