@@ -8,20 +8,26 @@
     <link rel="stylesheet" href="app.css"/>
     <link rel="stylesheet" href="ZoaReference.styles.css"/>
     <link rel="icon" type="image/x-icon" href="favicon.ico"/>
-    
-    <link rel="stylesheet" href="css/styles.css" asp-append-version="true" />
-    
+
+    <link rel="stylesheet" href="css/styles.css" asp-append-version="true"/>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Public+Sans&display=swap" rel="stylesheet"> 
-    
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=Public+Sans&display=swap"
+          rel="stylesheet">
+
     <script>
         window.SetFocusToElement = (element) => {
-            element.focus();
+            if (element !== null) {
+                element.focus();
+            }
+
         };
         window.SetFocusToId = (id) => {
             const element = document.getElementById(id);
-            element.focus();
+            if (element !== null) {
+                element.focus();
+            }
         };
     </script>
     <title>ZOA Reference</title>
@@ -36,5 +42,5 @@
 </html>
 
 @code {
-    
+
 }
