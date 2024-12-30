@@ -7,8 +7,11 @@
 @inject ScratchpadsRepository ScratchpadRepository
 @inject ProtectedSessionStorage ProtectedSessionStore
 
+<PageTitle>Scratchpads - ZOA Reference</PageTitle>
+
 <div class="ml-1 mb-4">
-    <select @ref="_dropdown" @bind:get="_selectedFacilityId" @bind:set="UpdateSelectedFacility" class="p-2 bg-gray-700 text-gray-100 w-64">
+    <select @ref="_dropdown" @bind:get="_selectedFacilityId" @bind:set="UpdateSelectedFacility"
+            class="p-2 bg-gray-700 text-gray-100 w-64">
         @foreach (var facility in _facilities)
         {
             <option value="@facility" class="text-gray-100">@facility</option>
@@ -18,8 +21,8 @@
 
 <div class="text-s">
     <QuickGrid Items="@_selectedScratchpads.AsQueryable()">
-        <PropertyColumn Title="Scratchpad" Property="@(m => m.Entry)" Sortable="true" />
-        <PropertyColumn Title="Description" Property="@(m => m.Description)" Sortable="true" />
+        <PropertyColumn Title="Scratchpad" Property="@(m => m.Entry)" Sortable="true"/>
+        <PropertyColumn Title="Description" Property="@(m => m.Description)" Sortable="true"/>
     </QuickGrid>
 </div>
 
@@ -46,14 +49,14 @@
                     _selectedFacilityId = savedStateTask.Value;
                     _selectedScratchpads = foundScratchpads!;
                 }
+
                 StateHasChanged();
             }
 
             await Js.InvokeVoidAsync("SetFocusToElement", _dropdown);
         }
     }
-    
-    
+
 
     private async Task UpdateSelectedFacility(string value)
     {
@@ -64,4 +67,5 @@
             await ProtectedSessionStore.SetAsync("scratchpadsSelectedFacilityId", _selectedFacilityId);
         }
     }
+
 }

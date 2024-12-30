@@ -1,11 +1,11 @@
 ﻿@page "/atis"
 @rendermode InteractiveServer
-
+@using ZoaReference.Features.DigitalAtis.Repositories
 @implements IDisposable;
 
-@using ZoaReference.Features.DigitalAtis.Repositories
-
 @inject DigitalAtisRepository AtisRepository;
+
+<PageTitle>ATIS - ZOA Reference</PageTitle>
 
 @if (_atisList is not null)
 {
@@ -39,15 +39,22 @@
 @code {
     private readonly string[] _airports = { "KSFO", "KSJC", "KRNO", "KOAK", "KSMF" };
     private List<Models.Atis>? _atisList;
-    private static string GetIssueTimeString(Models.Atis atis) => atis.IssueTime.ToString("HH:mm");
-    
+
+    private static string GetIssueTimeString(Models.Atis atis)
+    {
+        return atis.IssueTime.ToString("HH:mm");
+    }
+
     protected override void OnInitialized()
     {
-        _atisList = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId)).ToList();
+        //_atisList = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId)).ToList();
+        var allDAtis = AtisRepository.GetAllAtis();
+        var filteredAirports = _airports.Select(a => allDAtis.FirstOrDefault(atis => atis.IcaoId == a));
+        _atisList = filteredAirports.Where(a => a is not null).ToList()!;
         AtisRepository.NewInfoLetter += UpdateNewLetter;
         AtisRepository.NewAirportAdded += UpdateNewAirport;
     }
-    
+
     private void UpdateNewAirport(object? sender, NewAirportAddedArgs e)
     {
         UpdateDisplayedAtis();
@@ -63,10 +70,11 @@
         _atisList = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId)).ToList();
         _ = InvokeAsync(StateHasChanged);
     }
-    
+
     public void Dispose()
     {
         AtisRepository.NewInfoLetter -= UpdateNewLetter;
         AtisRepository.NewAirportAdded -= UpdateNewAirport;
     }
+
 }

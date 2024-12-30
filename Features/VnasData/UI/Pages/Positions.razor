@@ -1,19 +1,21 @@
 ﻿@page "/positions"
-@rendermode InteractiveServer
-
 @using ZoaReference.Features.VnasData.Models
 @using ZoaReference.Features.VnasData.Services
+@rendermode InteractiveServer
 
 @inject CachedVnasDataService VnasData
 @inject IJSRuntime Js
 
+<PageTitle>Positions - ZOA Reference</PageTitle>
 
-<input @ref=@_input class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5  mb-2 ml-1 w-40" type="text" @bind="_filterText" @bind:event="oninput" placeholder="Search" />
+<input @ref="@_input"
+       class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5  mb-2 ml-1 w-40"
+       type="text" @bind="_filterText" @bind:event="oninput" placeholder="Search"/>
 <div class="text-s">
     <QuickGrid Items="@FilteredPositions">
-        <PropertyColumn Property="@(p => p.Name)" Sortable="true" />
-        <PropertyColumn Property="@(p => p.Callsign)" Sortable="true" />
-        <PropertyColumn Property="@(p => p.RadioName)" Sortable="true" />
+        <PropertyColumn Property="@(p => p.Name)" Sortable="true"/>
+        <PropertyColumn Property="@(p => p.Callsign)" Sortable="true"/>
+        <PropertyColumn Property="@(p => p.RadioName)" Sortable="true"/>
         <TemplateColumn Title="Frequency" SortBy="@_sortByFreq">
             @(FreqToString(context.Frequency))
         </TemplateColumn>
@@ -30,9 +32,10 @@
     }
 
     private string _filterText = "";
+
     private readonly GridSort<Position> _sortByFreq = GridSort<Position>
         .ByAscending(p => p.Frequency);
-    
+
     private ElementReference _input;
 
     protected override async Task OnInitializedAsync()
@@ -55,10 +58,13 @@
         return $"{str[..3]}.{str[3..6]}";
     }
 
-    private static bool ContainsFilterString(Position p, string s) =>
-        string.IsNullOrEmpty(s)
-            || p.Name.Contains(s, StringComparison.OrdinalIgnoreCase) 
-            || p.Callsign.Contains(s, StringComparison.OrdinalIgnoreCase)
-            || p.RadioName.Contains(s, StringComparison.OrdinalIgnoreCase)
-            || FreqToString(p.Frequency).Contains(s, StringComparison.OrdinalIgnoreCase);
+    private static bool ContainsFilterString(Position p, string s)
+    {
+        return string.IsNullOrEmpty(s)
+               || p.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
+               || p.Callsign.Contains(s, StringComparison.OrdinalIgnoreCase)
+               || p.RadioName.Contains(s, StringComparison.OrdinalIgnoreCase)
+               || FreqToString(p.Frequency).Contains(s, StringComparison.OrdinalIgnoreCase);
+    }
+
 }

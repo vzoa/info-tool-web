@@ -1,21 +1,25 @@
 ﻿@page "/codes"
-@rendermode InteractiveServer
-
-@using ZoaReference.Features.IcaoReference.Repositories
 @using ZoaReference.Features.IcaoReference.Models
-@using System.Linq.Expressions
+@using ZoaReference.Features.IcaoReference.Repositories
+@rendermode InteractiveServer
 
 @inject AirlineRepository Airlines
 @inject AirportRepository Airports
 @inject AircraftTypeRepository AircraftTypes
+
+<PageTitle>Codes - ZOA Reference</PageTitle>
 
 
 <div class="flex flex-col text-s gap-8">
     <div>
         <EditForm Model="@_airlineForm" OnValidSubmit="@AirlineSubmit">
             <DataAnnotationsValidator/>
-            <InputText @bind-Value="_airlineForm!.Search" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-64" placeholder="Airline 3-letter"/>
-            <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search Airlines</button>
+            <InputText @bind-Value="_airlineForm!.Search"
+                       class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-64"
+                       placeholder="Airline 3-letter"/>
+            <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search
+                Airlines
+            </button>
             <ValidationMessage For="() => _airlineForm.Search"/>
         </EditForm>
 
@@ -26,12 +30,16 @@
             <PropertyColumn Property="@(p => p.Country)" Sortable="true"/>
         </QuickGrid>
     </div>
-    
+
     <div>
         <EditForm Model="@_airportForm" OnValidSubmit="@AirportSubmit">
             <DataAnnotationsValidator/>
-            <InputText @bind-Value="_airportForm!.Search" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-64" placeholder="Airport code"/>
-            <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search Airports</button>
+            <InputText @bind-Value="_airportForm!.Search"
+                       class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-64"
+                       placeholder="Airport code"/>
+            <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search
+                Airports
+            </button>
             <ValidationMessage For="() => _airportForm.Search"/>
         </EditForm>
 
@@ -41,26 +49,30 @@
             <PropertyColumn Property="@(p => p.Name)" Sortable="true"/>
         </QuickGrid>
     </div>
-    
+
     <div>
         <EditForm Model="@_aircraftForm" OnValidSubmit="@AircraftSubmit">
             <DataAnnotationsValidator/>
             <div class="flex-col">
                 <div class="flex items-center">
-                    <InputText @bind-Value="_aircraftForm!.Search" class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 ml-1 w-64" placeholder="Aircraft code / name"/>
-                    <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search Aircraft</button>
+                    <InputText @bind-Value="_aircraftForm!.Search"
+                               class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 ml-1 w-64"
+                               placeholder="Aircraft code / name"/>
+                    <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">
+                        Search Aircraft
+                    </button>
                 </div>
                 <div class="flex mt-2 ml-1 gap-5 items-center">
                     <div class="flex items-center">
-                        <InputCheckbox @bind-Value="_aircraftForm!.IncludeTypeDesignator" class="accent-orange-800" />
+                        <InputCheckbox @bind-Value="_aircraftForm!.IncludeTypeDesignator" class="accent-orange-800"/>
                         <label class="ml-2">Type Designator</label>
                     </div>
                     <div class="flex items-center">
-                        <InputCheckbox @bind-Value="_aircraftForm!.IncludeManufacturer" class="accent-orange-800" />
+                        <InputCheckbox @bind-Value="_aircraftForm!.IncludeManufacturer" class="accent-orange-800"/>
                         <label class="ml-2">Manufacturer</label>
                     </div>
                     <div class="flex items-center">
-                        <InputCheckbox @bind-Value="_aircraftForm!.IncludeModel" class="accent-orange-800" />
+                        <InputCheckbox @bind-Value="_aircraftForm!.IncludeModel" class="accent-orange-800"/>
                         <label class="ml-2">Model</label>
                     </div>
                 </div>
@@ -75,8 +87,8 @@
             <PropertyColumn Property="@(p => p.FaaEngineNumberType)" Title="Engine" Sortable="true"/>
             <PropertyColumn Property="@(p => p.FaaWeightClass)" Title="FAA Weight" Sortable="true"/>
             <PropertyColumn Property="@(p => p.ConsolidatedWakeTurbulenceCategory)" Title="CWT" Sortable="true"/>
-            <PropertyColumn Property="@(p => p.SameRunwaySeparationCategory)" Title="SRS" Sortable="true" />
-            <PropertyColumn Property="@(p => p.LandAndHoldShortGroup)" Title="LAHSO" Sortable="true" />
+            <PropertyColumn Property="@(p => p.SameRunwaySeparationCategory)" Title="SRS" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.LandAndHoldShortGroup)" Title="LAHSO" Sortable="true"/>
         </QuickGrid>
     </div>
 </div>
@@ -94,8 +106,7 @@
 
     private class AirlineForm
     {
-        [Required]
-        public string Search { get; set; }
+        [Required] public string Search { get; set; }
     }
 
     private void AirlineSubmit()
@@ -112,13 +123,12 @@
                 .Where(a => a.Callsign.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
         }
     }
-    
+
     private class AirportForm
     {
-        [Required]
-        public string Search { get; set; }
+        [Required] public string Search { get; set; }
     }
-    
+
     private void AirportSubmit()
     {
         var trimmed = _airportForm.Search.Trim();
@@ -134,29 +144,37 @@
                 .Where(a => a.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
         }
     }
-    
+
     private class AircraftForm
     {
-        [Required] 
-        public string Search { get; set; }
-        
-        [Required] 
-        public bool IncludeTypeDesignator { get; set; } = true;
-        
-        [Required]
-        public bool IncludeManufacturer { get; set; } = true;
-        
-        [Required]
-        public bool IncludeModel { get; set; } = true;
+        [Required] public string Search { get; set; }
+
+        [Required] public bool IncludeTypeDesignator { get; set; } = true;
+
+        [Required] public bool IncludeManufacturer { get; set; } = true;
+
+        [Required] public bool IncludeModel { get; set; } = true;
     }
-    
+
     private void AircraftSubmit()
     {
-        bool TypeDesignatorPredicate(string s, AircraftType a) => _aircraftForm.IncludeTypeDesignator && a.IcaoId.Equals(s, StringComparison.OrdinalIgnoreCase);
-        bool ManufacturerPredicate(string s, AircraftType a) => _aircraftForm.IncludeManufacturer && a.Manufacturer.Contains(s, StringComparison.OrdinalIgnoreCase);
-        bool ModelPredicate(string s, AircraftType a) => _aircraftForm.IncludeModel && a.Model.Contains(s, StringComparison.OrdinalIgnoreCase);
-        
+        bool TypeDesignatorPredicate(string s, AircraftType a)
+        {
+            return _aircraftForm.IncludeTypeDesignator && a.IcaoId.Equals(s, StringComparison.OrdinalIgnoreCase);
+        }
+
+        bool ManufacturerPredicate(string s, AircraftType a)
+        {
+            return _aircraftForm.IncludeManufacturer && a.Manufacturer.Contains(s, StringComparison.OrdinalIgnoreCase);
+        }
+
+        bool ModelPredicate(string s, AircraftType a)
+        {
+            return _aircraftForm.IncludeModel && a.Model.Contains(s, StringComparison.OrdinalIgnoreCase);
+        }
+
         var trimmed = _aircraftForm.Search.Trim();
         _displayedAircraft = AircraftTypes.AllAircraftTypes.Where(a => TypeDesignatorPredicate(trimmed, a) || ManufacturerPredicate(trimmed, a) || ModelPredicate(trimmed, a));
     }
+
 }

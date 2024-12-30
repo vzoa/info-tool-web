@@ -1,13 +1,13 @@
 ﻿@page "/procedures"
-@rendermode InteractiveServer
-
-@using ZoaReference.Features.Docs.Repositories
 @using Microsoft.Extensions.Options
+@using ZoaReference.Features.Docs.Repositories
+@rendermode InteractiveServer
 
 @inject DocumentRepository DocumentRepository
 @inject IOptionsMonitor<AppSettings> AppSettings
 @inject ProtectedSessionStorage ProtectedSessionStore
 
+<PageTitle>Procedures - ZOA Reference</PageTitle>
 
 <div>
     <select @bind="_displayedPdfUrl" @bind:after="UpdateStoredUrl" class="p-2 bg-gray-700 text-gray-100 w-[600px]">
@@ -34,7 +34,7 @@
 @code {
 
     private string _displayedPdfUrl = "";
-    
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -49,7 +49,7 @@
             StateHasChanged();
         }
     }
-    
+
     private static string GetPdfNameFromUrl(string url)
     {
         var uri = new Uri(url);
@@ -66,4 +66,5 @@
     {
         await ProtectedSessionStore.SetAsync("proceduresPdfUrl", _displayedPdfUrl);
     }
+
 }
