@@ -12,11 +12,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_21.x | bash - \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /src
+COPY package*.json .
+RUN npm ci
 COPY ["ZoaReference.csproj", "./"]
 RUN dotnet restore "ZoaReference.csproj"
 COPY . .
-WORKDIR "/src/"
-RUN npm install 
 RUN dotnet build "ZoaReference.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
