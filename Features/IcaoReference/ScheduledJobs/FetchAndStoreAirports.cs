@@ -47,7 +47,6 @@ public partial class FetchAndStoreAirports(ILogger<FetchAndStoreAirports> logger
             using var localAirportsReader = new StringReader(localAirportsResponseStream);
             for (var line = localAirportsReader.ReadLine(); line is not null; line = localAirportsReader.ReadLine())
             {
-                Console.WriteLine(line);
                 // Skip if line is empty or a commented line starting with ;
                 if (line.Trim() == "" || line.StartsWith(';'))
                 {
