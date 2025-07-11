@@ -46,6 +46,7 @@ public class AppSettings
         public string VatsimApiEndpoint { get; set; } = string.Empty;
         public string AliasTextFile { get; set;} = string.Empty;
         public string VatspyData { get; set; } = string.Empty;
+        public string LocalAirpotsDat{ get; set; } = string.Empty;
         public string LoaFile { get; set; } = string.Empty;
         public string ZoaDocumentsApiEndpoint { get; set; } = string.Empty;
         public string ScratchpadsJson { get; set; } = string.Empty;
