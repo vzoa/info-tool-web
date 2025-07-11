@@ -4,6 +4,9 @@ using ZoaReference.Components;
 using ZoaReference.FeatureUtilities;
 
 var builder = WebApplication.CreateBuilder(args);
+if ((Environment.GetEnvironmentVariable("SENTRY_DSN") ?? "") != "") {
+    builder.WebHost.UseSentry();
+}
 
 builder.Host.UseSystemd();
 
