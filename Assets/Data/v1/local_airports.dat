@@ -1,0 +1,56 @@
+;Local FAA airports that don't appear in the vatspy project
+;Format:  ICAO|Airport Name|Latitude Decimal|Longitude Decimal|IATA/LID|FIR|IsPseudo
+;https://github.com/vatsimnetwork/vatspy-data-project/blob/6c06d9481ec79611ddfbd3575250640c5498dff8/VATSpy.dat#L329
+
+K0O4|Corning Muni CA|||0O4|KZOA|0
+K0Q3|Sonoma Valley CA|||0Q3|KZOA|0
+K0Q5|Shelter Cove CA|||0Q5|KZOA|0
+K0Q9|Sonoma Skypark CA|||0Q9|KZOA|0
+K1C9|Frasier Lake Airpark CA|||1C9|KZOA|0
+K1O3|Lodi CA|||1O3|KZOA|0
+K1Q4|New Jerusalem CA|||1Q4|KZOA|0
+K1Q5|Gravelly Valley CA|||1Q5|KZOA|0
+K2O6|Chowchilla CA|||2O6|KZOA|0
+K2O7|Independence CA|||2O7|KZLA|0
+K2O8|Angwin-Parrett Field CA|||2O8|KZOA|0
+K3O8|Harris Ranch CA|||3O8|KZOA|0
+KD86|Sequoia Field CA|36.448|-119.318722|D86|KZOA|0
+KE55|Ocean Ridge CA|||E55|KZOA|0
+KE79|Sierra Skypark CA|||E79|KZOA|0
+KF70|French Valley CA|33.574|-117.128611|F70|KZLA|0
+KF72|Franklin Field CA|||F72|KZOA|0
+KL06|Furnace Creek CA|||L06|KZLA|0
+KL09|Stonepipe Wells CA|||L09|KZLA|0
+KL17|Taft-Kern County CA|||L17|KLA|0
+KL35|Big Bear City CA|||L35|KZLA|0
+KL36|Rio Linda CA|||L36|KZOA|0
+KL45|Bakerfield Muni CA|||L45|KZLA|0
+KL52|Oceano County CA|||L54|KZLA|0
+KL53|Lodi Airpark CA|||L53|KZOA|0
+KL70|Aqua Dulce CA|||L70|KZLA|0
+KL71|California City Muni CA|||L71|KZLA|0
+KL72|Trona CA|||L72|KZLA|0
+KL88|New Cuyama CA|||L88|KZLA|0
+KL94|Mountain Valley CA|||L94|KZLA|0
+KM45|Alpine County CA|||M45|KZOA|0
+KO05|Rogers Field CA|||O05|KZOA|0
+KO08|Colusa County CA|||O08|KZOA|0
+KO09|Round Valley CA|||O09|KZOA|0
+KO15|Turlock Muni CA|37.484|-120.697333|O15|KZOA|0
+KO16|Garberville CA|||O16|KZOA|0
+KO20|Kingdon Airpark CA|||O20|KZOA|0
+KO24|Lee Vining CA|||O24|KZOA|0
+KO26|Lone Pine-Death Valley CA|||O26|KZLA|0
+KO27|Oakdale CA|||O27|KZOA|0
+KO28|Ells Field-Willits Muni|||O28|KZOA|0
+KO32|Reedley Muni CA|||O32|KZOA|0
+KO33|Samoa Field CA|||O33|KZOA|0
+KO37|Haigh Field CA|||O37|KZOA|0
+KO41|Watts-Woodland CA|||O41|KZOA|0
+KO46|Weed CA|||O46|KZSE|0
+KO52|Sutter County CA|||O52|KZOA|0
+KO57|Bryant Field CA|||O57|KZOA|0
+KO69|Petaluma Muni CA|38.258|-122.605556|O69|KZOA|0
+KO85|Benton Field CA|||O85|KZOA|0
+KO86|Trinity Center CA|||O86|KZOA|0
+KO88|Rio Vista Muni CA|38.193|-121.703611|O88|KZOA|0
