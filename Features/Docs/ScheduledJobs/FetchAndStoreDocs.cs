@@ -25,10 +25,10 @@ public class FetchAndStoreDocs(ILogger<FetchAndStoreDocs> logger, IHttpClientFac
             {
                 logger.LogInformation("Fetched ZOA documents null or zero");
             }
-            
+
             var customDocCategories = appSettings.CurrentValue.CustomDocuments;
             compiledDocCategories.AddRange(customDocCategories.Select(c => c.ToGenericDocumentCategory()));
-            
+
             logger.LogInformation("Successfully fetched ZOA and custom docs");
         }
         catch (Exception e)
@@ -43,7 +43,7 @@ public class FetchAndStoreDocs(ILogger<FetchAndStoreDocs> logger, IHttpClientFac
             {
                 var pdfName = GetPdfNameFromUrl(doc.Url);
                 var localPdfPath = Path.ChangeExtension(Path.Combine(PdfFolderPath, pdfName), ".pdf");
-                
+
                 // Always write new file
                 try
                 {
@@ -57,13 +57,12 @@ public class FetchAndStoreDocs(ILogger<FetchAndStoreDocs> logger, IHttpClientFac
                 }
             }
         }
-        
+
         await Task.WhenAll(tasks);
         documentRepository.ClearAllDocumentCategories();
         documentRepository.AddDocumentCategories(compiledDocCategories);
-        Console.WriteLine("test");
     }
-    
+
     private string PdfFolderPath => Path.Combine(webHostEnvironment.WebRootPath, appSettings.CurrentValue.DocumentsPdfPath);
 
     private static string GetPdfNameFromUrl(string url)
@@ -93,6 +92,6 @@ public class FetchAndStoreDocs(ILogger<FetchAndStoreDocs> logger, IHttpClientFac
         {
             logger.LogError("Error while fetching PDF from {url}: {ex}", url, e);
         }
-        
+
     }
 }
