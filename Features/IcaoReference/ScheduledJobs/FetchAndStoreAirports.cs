@@ -34,7 +34,7 @@ public partial class FetchAndStoreAirports(ILogger<FetchAndStoreAirports> logger
                         new Airport(icao, iata, iata, name, fir, latitude, longitude));
                 }
             }
-            catch (FormatException e)
+            catch (SystemException e)
             {
                 logger.LogWarning("Could not parse local airport: {ex}", e.ToString());
             }
