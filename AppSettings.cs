@@ -50,6 +50,7 @@ public class AppSettings
         public string LoaFile { get; set; } = string.Empty;
         public string ZoaDocumentsApiEndpoint { get; set; } = string.Empty;
         public string ScratchpadsJson { get; set; } = string.Empty;
+        public string CskoRouteBase { get; set; } = string.Empty;
     }
 
     public class ArtccAirportsSettings
