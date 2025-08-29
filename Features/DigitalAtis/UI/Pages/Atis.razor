@@ -7,9 +7,59 @@
 
 <PageTitle>ATIS - ZOA Reference</PageTitle>
 
-@if (_atisList is not null)
+<div class="mb-4 p-4 bg-slate-800 rounded-lg">
+    <div class="flex items-center gap-4">
+        <div class="flex-1">
+            <label for="customAirport" class="block text-sm font-medium text-gray-300 mb-1">Add Custom Airport</label>
+            <div class="flex gap-2">
+                <input 
+                    type="text" 
+                    id="customAirport" 
+                    @bind="customAirportInput" 
+                    @bind:event="oninput"
+                    @onkeypress="@(async (e) => { if (e.Key == "Enter") await AddCustomAirport(); })"
+                    placeholder="Enter ICAO code (e.g., KSFO)" 
+                    class="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    maxlength="4"
+                />
+                <button 
+                    @onclick="AddCustomAirport" 
+                    disabled="@(string.IsNullOrWhiteSpace(customAirportInput))"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    Add
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    @if (_customAirports.Any())
+    {
+        <div class="mt-3">
+            <label class="block text-sm font-medium text-gray-300 mb-2">Custom Airports:</label>
+            <div class="flex flex-wrap gap-2">
+                @foreach (var airport in _customAirports)
+                {
+                    <div class="flex items-center gap-2 px-3 py-1 bg-slate-700 rounded-md">
+                        <span class="text-white font-mono">@airport</span>
+                        <button 
+                            @onclick="() => RemoveCustomAirport(airport)" 
+                            class="text-red-400 hover:text-red-300 focus:outline-none"
+                            title="Remove @airport"
+                        >
+                            ×
+                        </button>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (_hardcodedAtisList is not null && _hardcodedAtisList.Any())
 {
-    foreach (var atis in _atisList)
+    <h3 class="text-lg font-semibold text-gray-300 mb-3">Primary Airports</h3>
+    foreach (var atis in _hardcodedAtisList)
     {
         <div class="flex mb-2">
             <div class="flex flex-col items-center w-20 shrink-0 justify-center">
@@ -35,10 +85,55 @@
     }
 }
 
+@if (_customAtisList is not null && _customAtisList.Any())
+{
+    <h3 class="text-lg font-semibold text-gray-300 mb-3 mt-6">Custom Airports</h3>
+    foreach (var atis in _customAtisList)
+    {
+        <div class="flex mb-2">
+            <div class="flex flex-col items-center w-20 shrink-0 justify-center">
+                <span class="text-2xl">@atis.IcaoId[1..]</span>
+            </div>
+            <div class="flex items-center border border-slate-600 p-1.5 text-sm w-20 shrink-0 justify-center">
+                <div class="flex flex-col items-center">
+                    @if (atis.Type != Models.Atis.AtisType.Combined)
+                    {
+                        <span class="text-sm">@atis.Type</span>
+                    }
+                    <span class="font-mono text-2xl text-yellow-500">@atis.InfoLetter</span>
+                    <span class="text-sm">@GetIssueTimeString(atis)</span>
+                </div>
+            </div>
+            <div class="ml-3 flex items-center border border-slate-600 p-1.5 text-xs w-64 shrink-0">
+                <span>@atis.WeatherText</span>
+            </div>
+            <div class="ml-3 flex items-center border border-slate-600 p-1.5 text-sm grow">
+                <span>@atis.StatusText</span>
+            </div>
+        </div>
+    }
+}
+
+@if ((_hardcodedAtisList is null || !_hardcodedAtisList.Any()) && (_customAtisList is null || !_customAtisList.Any()))
+{
+    <div class="flex items-center justify-center p-8 text-gray-400">
+        <div class="text-center">
+            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <h3 class="text-lg font-medium text-gray-300 mb-2">ATIS Information Unavailable</h3>
+            <p class="text-sm text-gray-500">Unable to retrieve ATIS data at this time. Please try again later.</p>
+        </div>
+    </div>
+}
+
 
 @code {
     private readonly string[] _airports = { "KSFO", "KSJC", "KRNO", "KOAK", "KSMF" };
-    private List<Models.Atis>? _atisList;
+    private List<Models.Atis>? _hardcodedAtisList;
+    private List<Models.Atis>? _customAtisList;
+    private HashSet<string> _customAirports = new();
+    private string customAirportInput = string.Empty;
 
     private static string GetIssueTimeString(Models.Atis atis)
     {
@@ -47,12 +142,42 @@
 
     protected override void OnInitialized()
     {
-        //_atisList = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId)).ToList();
-        var allDAtis = AtisRepository.GetAllAtis();
-        var filteredAirports = _airports.Select(a => allDAtis.FirstOrDefault(atis => atis.IcaoId == a));
-        _atisList = filteredAirports.Where(a => a is not null).ToList()!;
+        UpdateDisplayedAtis();
         AtisRepository.NewInfoLetter += UpdateNewLetter;
         AtisRepository.NewAirportAdded += UpdateNewAirport;
+    }
+
+    private async Task AddCustomAirport()
+    {
+        if (string.IsNullOrWhiteSpace(customAirportInput))
+            return;
+
+        var airportCode = customAirportInput.Trim().ToUpper();
+        
+        // Validate ICAO format (4 characters, starting with K for US airports)
+        if (airportCode.Length != 4 || !airportCode.StartsWith("K"))
+        {
+            // You could add a toast notification here if you have one
+            return;
+        }
+
+        // Check if already in the list
+        if (_airports.Contains(airportCode) || _customAirports.Contains(airportCode))
+        {
+            return;
+        }
+
+        _customAirports.Add(airportCode);
+        customAirportInput = string.Empty;
+        UpdateDisplayedAtis();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RemoveCustomAirport(string airport)
+    {
+        _customAirports.Remove(airport);
+        UpdateDisplayedAtis();
+        await InvokeAsync(StateHasChanged);
     }
 
     private void UpdateNewAirport(object? sender, NewAirportAddedArgs e)
@@ -67,7 +192,16 @@
 
     private void UpdateDisplayedAtis()
     {
-        _atisList = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId)).ToList();
+        var allDAtis = AtisRepository.GetAllAtis();
+        
+        // Get hardcoded airports ATIS data
+        var hardcodedAirports = _airports.Select(a => allDAtis.FirstOrDefault(atis => atis.IcaoId == a));
+        _hardcodedAtisList = hardcodedAirports.Where(a => a is not null).ToList()!;
+        
+        // Get custom airports ATIS data
+        var customAirports = _customAirports.Select(a => allDAtis.FirstOrDefault(atis => atis.IcaoId == a));
+        _customAtisList = customAirports.Where(a => a is not null).ToList()!;
+        
         _ = InvokeAsync(StateHasChanged);
     }
 
