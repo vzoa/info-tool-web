@@ -101,7 +101,7 @@
             {
                 <QuickGrid Items="@_displayedRwRoutes.FlightRouteSummaries.AsQueryable()">
                     <PropertyColumn Property="@(p => p.RouteFrequency)" Title="Freq"/>
-                    <PropertyColumn Property="@(p => p.Route)" Title="Freq"/>
+                    <PropertyColumn Property="@(p => p.Route)" Title="Route"/>
                     <TemplateColumn Title="Altitude">
                         @switch (context.MinAltitude)
                         {
