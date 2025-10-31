@@ -14,6 +14,7 @@
 <div class="text-s">
     <QuickGrid Items="@FilteredPositions">
         <PropertyColumn Property="@(p => p.Name)" Sortable="true"/>
+        <PropertyColumn Property="@(p => p.Tcp)" Sortable="true"/>
         <PropertyColumn Property="@(p => p.Callsign)" Sortable="true"/>
         <PropertyColumn Property="@(p => p.RadioName)" Sortable="true"/>
         <TemplateColumn Title="Frequency" SortBy="@_sortByFreq">
@@ -23,17 +24,17 @@
 </div>
 
 @code {
-    private ICollection<Position> _positions = new List<Position>();
-    private IQueryable<Position> PositionsQueryable => _positions.AsQueryable();
+    private ICollection<PositionExtended> _positions = new List<PositionExtended>();
+    private IQueryable<PositionExtended> PositionsQueryable => _positions.AsQueryable();
 
-    private IQueryable<Position> FilteredPositions
+    private IQueryable<PositionExtended> FilteredPositions
     {
         get { return PositionsQueryable.Where(p => ContainsFilterString(p, _filterText)); }
     }
 
     private string _filterText = "";
 
-    private readonly GridSort<Position> _sortByFreq = GridSort<Position>
+    private readonly GridSort<PositionExtended> _sortByFreq = GridSort<PositionExtended>
         .ByAscending(p => p.Frequency);
 
     private ElementReference _input;
@@ -41,7 +42,11 @@
     protected override async Task OnInitializedAsync()
     {
         var fetchedFacilities = await VnasData.GetArtccFacilities("ZOA");
-        _positions = fetchedFacilities.SelectMany(f => f.Facility.Positions).ToList();
+        _positions = fetchedFacilities
+            .Where(f => f.Facility.Positions != null)
+            .SelectMany(f => f.Facility.Positions)
+            .Select(p => new PositionExtended(p))
+            .ToList();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -58,7 +63,7 @@
         return $"{str[..3]}.{str[3..6]}";
     }
 
-    private static bool ContainsFilterString(Position p, string s)
+    private static bool ContainsFilterString(PositionExtended p, string s)
     {
         return string.IsNullOrEmpty(s)
                || p.Name.Contains(s, StringComparison.OrdinalIgnoreCase)
