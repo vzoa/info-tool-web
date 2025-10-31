@@ -24,7 +24,7 @@
                     </button>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
                          class="stroke-gray-100 w-4 h-4 absolute top-1 -right-4 hover:stroke-red-500 transition-colors hover:cursor-pointer"
-                         @onclick="() => RemoveAirport(airport)">
+                         @onclick="args => RemoveAirport(airport, args)">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
                 </div>
@@ -42,6 +42,7 @@
                     d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
             </svg>
         </button>
+
         @if (_airportInputShown)
         {
             <EditForm Model="@_airportForm" OnValidSubmit="@AirportSubmit">
@@ -183,21 +184,42 @@
         }
     }
 
-    private async Task RemoveAirport(Airport airport)
+    private async Task RemoveAirport(Airport airport, MouseEventArgs args)
     {
-        _airports.RemoveAll(a => a.Guid == airport.Guid);
-        if (airport.Id == _airportId)
+        if (args.CtrlKey)
         {
-            _displayedChart = null;
-            _displayedChartPage = null;
-            _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
-        }
+            var currentAirportIsCustom = _airports.Any(a => a.Id == _airportId);
+            _airports.RemoveAll(a => a.Type == AirportType.Other);
+            if (currentAirportIsCustom)
+            {
+                _displayedChart = null;
+                _displayedChartPage = null;
+                _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
+            }
 
-        var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
-        if (savedCustomAirportsTask is { Success: true, Value: not null })
+            var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
+            if (savedCustomAirportsTask is { Success: true, Value: not null })
+            {
+                _airports.RemoveAll(a => a.Type == AirportType.Other);
+                await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, savedCustomAirportsTask.Value);
+            }
+        }
+        else
         {
-            savedCustomAirportsTask.Value.RemoveAll(a => a.Guid == airport.Guid);
-            await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, savedCustomAirportsTask.Value);
+            _airports.RemoveAll(a => a.Guid == airport.Guid);
+            if (airport.Id == _airportId)
+            {
+                _displayedChart = null;
+                _displayedChartPage = null;
+                _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
+            }
+
+            var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
+            if (savedCustomAirportsTask is { Success: true, Value: not null })
+            {
+                savedCustomAirportsTask.Value.RemoveAll(a => a.Guid == airport.Guid);
+                await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, savedCustomAirportsTask.Value);
+            }
         }
     }
 
@@ -296,7 +318,7 @@
 
     private string MakeChartButtonClass(Chart chart)
     {
-        const string baseClass = "hover:bg-gray-700 border p-1 m-1 cursor-pointer text-xs w-32 h-12";
+        const string baseClass = "border p-1 m-1 cursor-pointer text-xs w-32 h-12";
         var borderColor = chart.ChartCode switch
         {
             "APD" => "border-green-500",
@@ -308,7 +330,7 @@
             "DP" => "border-pink-500",
             _ => "border-gray-600"
         };
-        var isSelected = _displayedChart?.ChartName == chart.ChartName && _displayedChart?.AirportName == chart.AirportName ? "bg-gray-700 font-bold" : "";
+        var isSelected = _displayedChart?.ChartName == chart.ChartName && _displayedChart?.AirportName == chart.AirportName ? "bg-white text-black font-bold" : "hover:bg-gray-700 ";
 
         return string.Join(" ", baseClass, borderColor, isSelected);
     }
