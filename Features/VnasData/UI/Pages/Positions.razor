@@ -14,9 +14,9 @@
 <div class="text-s">
     <QuickGrid Items="@FilteredPositions">
         <PropertyColumn Property="@(p => p.Name)" Sortable="true"/>
-        <PropertyColumn Property="@(p => p.Tcp)" Sortable="true"/>
+        <PropertyColumn Property="@(p => p.Tcp)" Title="STARS TCP" Sortable="true"/>
         <PropertyColumn Property="@(p => p.Callsign)" Sortable="true"/>
-        <PropertyColumn Property="@(p => p.RadioName)" Sortable="true"/>
+        <PropertyColumn Property="@(p => p.RadioName)" Title="Radio Name" Sortable="true"/>
         <TemplateColumn Title="Frequency" SortBy="@_sortByFreq">
             @(FreqToString(context.Frequency))
         </TemplateColumn>
@@ -43,7 +43,6 @@
     {
         var fetchedFacilities = await VnasData.GetArtccFacilities("ZOA");
         _positions = fetchedFacilities
-            .Where(f => f.Facility.Positions != null)
             .SelectMany(f => f.Facility.Positions)
             .Select(p => new PositionExtended(p))
             .ToList();
