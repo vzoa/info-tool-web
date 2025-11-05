@@ -6,7 +6,11 @@ using ZoaReference.Features.VnasData.Models;
 
 namespace ZoaReference.Features.VnasData.Services;
 
-public class CachedVnasDataService(IMemoryCache cache, IHttpClientFactory httpClientFactory, IOptionsMonitor<AppSettings> appSettings, ILogger<CachedVnasDataService> logger)
+public class CachedVnasDataService(
+    IMemoryCache cache,
+    IHttpClientFactory httpClientFactory,
+    IOptionsMonitor<AppSettings> appSettings,
+    ILogger<CachedVnasDataService> logger)
 {
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
@@ -18,15 +22,15 @@ public class CachedVnasDataService(IMemoryCache cache, IHttpClientFactory httpCl
         if (cache.TryGetValue<IEnumerable<FacilityExtended>>(MakeFacilityCacheKey(artccId), out var cached))
         {
             logger.LogInformation("Found cached VNAS Facilities data for {artcc}", artccId);
-            return cached ?? Enumerable.Empty<FacilityExtended>();
+            return cached ?? [];
         }
-        
+
         var jsonRoot = await GetJsonRoot(artccId, c);
         if (jsonRoot is null)
         {
-            return Enumerable.Empty<FacilityExtended>();
+            return [];
         }
-        
+
         var videoMapDict = jsonRoot.VideoMaps.ToDictionary(m => m.Id);
         var returnFacilities = new List<FacilityExtended>();
         var queue = new Queue<Facility>();
@@ -35,7 +39,8 @@ public class CachedVnasDataService(IMemoryCache cache, IHttpClientFactory httpCl
         while (queue.Count > 0)
         {
             var facility = queue.Dequeue();
-            var maps = facility.StarsConfiguration?.VideoMapIds.Select(m => videoMapDict.GetValueOrDefault(m)).Where(m => m is not null);
+            var maps = facility.StarsConfiguration?.VideoMapIds.Select(m => videoMapDict.GetValueOrDefault(m))
+                .Where(m => m is not null);
             returnFacilities.Add(new FacilityExtended(facility, (maps ?? [])!));
             facility.ChildFacilities.ForEach(child => queue.Enqueue(child));
         }
@@ -48,11 +53,12 @@ public class CachedVnasDataService(IMemoryCache cache, IHttpClientFactory httpCl
     private async Task<VnasApiRoot?> GetJsonRoot(string artccId, CancellationToken c = default)
     {
         var httpClient = httpClientFactory.CreateClient();
-        var jsonRoot = await httpClient.GetFromJsonAsync<VnasApiRoot>($"{appSettings.CurrentValue.Urls.VnasApiEndpoint}/artccs/{artccId.ToUpper()}", _jsonOptions, c);
+        var jsonRoot = await httpClient.GetFromJsonAsync<VnasApiRoot>(
+            $"{appSettings.CurrentValue.Urls.VnasApiEndpoint}/artccs/{artccId.ToUpper()}", _jsonOptions, c);
         return jsonRoot;
     }
 
     public Task ForceCache(string artccId, CancellationToken c = default) => GetArtccFacilities(artccId, c);
-    
+
     private static string MakeFacilityCacheKey(string id) => $"VnasDataFacility:{id}";
 }

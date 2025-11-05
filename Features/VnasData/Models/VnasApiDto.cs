@@ -383,7 +383,7 @@ public class Position
     [JsonPropertyName("frequency")] public int Frequency { get; set; }
 
     [JsonPropertyName("starsConfiguration")]
-    public StarsConfiguration? StarsConfiguration { get; set; }
+    public PositionStarsConfiguration? StarsConfiguration { get; set; }
 
     [JsonPropertyName("eramConfiguration")]
     public EramConfiguration? EramConfiguration { get; set; }
@@ -552,6 +552,26 @@ public class StarsConfiguration
 
     [JsonPropertyName("artccHandoffsUseNasId")]
     public bool ArtccHandoffsUseNasId { get; set; }
+
+    [JsonPropertyName("tcps")] public List<Tcp> Tcps { get; set; }
+}
+
+public class Tcp
+{
+    [JsonPropertyName("subset")] public int Subset { get; set; }
+
+    [JsonPropertyName("sectorId")] public string SectorId { get; set; }
+
+    [JsonPropertyName("id")] public string Id { get; set; }
+
+    [JsonPropertyName("parentTcpId")] public string? ParentTcpId { get; set; }
+}
+
+public class PositionStarsConfiguration
+{
+    [JsonPropertyName("areaId")] public string AreaId { get; set; }
+    [JsonPropertyName("colorSet")] public string ColorSet { get; set; }
+    [JsonPropertyName("tcpId")] public string TcpId { get; set; }
 }
 
 public class StarsHandoffId
