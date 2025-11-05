@@ -42,21 +42,23 @@
     protected override async Task OnInitializedAsync()
     {
         var fetchedFacilities = await VnasData.GetArtccFacilities("ZOA");
+        
+        var tcps = fetchedFacilities
+            .Where(f => f.Facility.StarsConfiguration is not null)
+            .SelectMany(f => f.Facility.StarsConfiguration!.Tcps)
+            .ToDictionary(t => t.Id, t => $"{t.Subset}{t.SectorId}");
+
         List<PositionExtended> positions = [];
         foreach (var facility in fetchedFacilities)
         {
-            if (facility.Facility.StarsConfiguration is not null)
+            foreach (var position in facility.Facility.Positions)
             {
-                foreach (var position in facility.Facility.Positions)
+                if (position.StarsConfiguration is not null)
                 {
-                    var tcp = facility.Facility.StarsConfiguration.Tcps.Find(t => t.Id == position.StarsConfiguration!.TcpId);
-                    var tcpString = tcp is not null ? $"{tcp.Subset}{tcp.SectorId}" : "";
+                    tcps.TryGetValue(position.StarsConfiguration.TcpId, out var tcpString);
                     positions.Add(new PositionExtended(position, tcpString));
                 }
-            }
-            else
-            {
-                foreach (var position in facility.Facility.Positions)
+                else
                 {
                     positions.Add(new PositionExtended(position, ""));
                 }
