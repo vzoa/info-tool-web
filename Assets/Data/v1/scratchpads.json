@@ -12,11 +12,11 @@
       },
       {
         "entry": "GPR",
-        "description": "GPS 29R/11R"
+        "description": "RNAV Approach 29R or 11R"
       },
       {
         "entry": "GPL",
-        "description": "GPS 29L/11L"
+        "description": "RNAV Approach 29 or 11L"
       },
       {
         "entry": "HR1",
@@ -24,15 +24,15 @@
       },
       {
         "entry": "LOC",
-        "description": "Localizer approach to 11L"
+        "description": "Localizer Approach 29R or 11L"
       },
       {
         "entry": "ILS",
-        "description": "ILS approach to 29R"
+        "description": "ILS Approach 29R"
       },
       {
-        "entry": "PTN",
-        "description": "IFR approach stay VFR with tower"
+        "entry": "+PTN",
+        "description": "Intentions are to remain in local pattern (for IFR approaches that will then stay with local)"
       },
       {
         "entry": "BRK",
@@ -40,11 +40,11 @@
       },
       {
         "entry": "11L",
-        "description": "Class C arrival 11L"
+        "description": "VFR Arrival 11L"
       },
       {
         "entry": "29L",
-        "description": "Class C arrival 29L"
+        "description": "VFR Arrival 29L"
       },
       {
         "entry": "VOR",
@@ -56,27 +56,27 @@
       },
       {
         "entry": "11R",
-        "description": "Class C arrival 11R"
+        "description": "VFR Arrival 11R"
       },
       {
         "entry": "29R",
-        "description": "Class C arrival 29R"
+        "description": "VFR Arrival 29R"
       },
       {
         "entry": "SFO",
         "description": "Simulated flameout"
       },
       {
-        "entry": "SVF",
+        "entry": "+SVF",
         "description": "Special VFR"
       },
       {
         "entry": "VAR",
-        "description": "VA or CTC to 11R or 29R"
+        "description": "Visual Approach or Contact Approach to 11R or 29R"
       },
       {
         "entry": "VAL",
-        "description": "VA or CTC to 11L or 29L"
+        "description": "Visual Approach or Contact Approach to 11L or 29L"
       }
     ]
   },
