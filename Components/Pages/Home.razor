@@ -1,13 +1,31 @@
-﻿@page "/"
+@page "/"
 @rendermode InteractiveServer
 
 @inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+@using ZoaReference.Components.Layout
 
 @code {
 
-    protected override void OnAfterRender(bool firstRender)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender) Navigation.NavigateTo("atis");
+        if (!firstRender) return;
+
+        var href = NavItems.All[NavItems.DefaultOrder[0]].Href;
+        try
+        {
+            var module = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/navorder.js");
+            var saved = await module.InvokeAsync<string[]?>("loadOrder");
+            if (saved is { Length: > 0 } && NavItems.All.TryGetValue(saved[0], out var item))
+            {
+                href = item.Href;
+            }
+            await module.DisposeAsync();
+        }
+        catch (JSDisconnectedException) { }
+
+        Navigation.NavigateTo(href);
     }
 
 }

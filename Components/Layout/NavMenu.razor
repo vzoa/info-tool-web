@@ -10,7 +10,7 @@
         <ul @ref="_ulRef" class="flex list-none items-center p-1">
             @foreach (var key in _orderedKeys)
             {
-                var item = _allNavItems[key];
+                var item = NavItems.All[key];
                 <NavButton @key="key" Key="@key" href="@item.Href">@item.Label</NavButton>
             }
         </ul>
@@ -22,29 +22,7 @@
 </div>
 
 @code {
-    private record NavItem(string Href, string Label);
-
-    private static readonly Dictionary<string, NavItem> _allNavItems = new()
-    {
-        ["atis"] = new("/atis", "ATIS"),
-        ["routes"] = new("/routes", "Routes"),
-        ["charts"] = new("/charts", "Charts"),
-        ["codes"] = new("/codes", "ICAO Codes"),
-        ["positions"] = new("/positions", "Positions"),
-        ["videomaps"] = new("/videomaps", "STARS Video Maps"),
-        ["procedures"] = new("/procedures", "Procedures"),
-        ["scratchpads"] = new("/scratchpads", "Scratchpads"),
-        ["nctvisualizer"] = new("/nctvisualizer", "NCT Viz"),
-        ["zoavisualizer"] = new("/zoavisualizer", "ZOA Viz"),
-    };
-
-    private static readonly List<string> _defaultOrder = new()
-    {
-        "atis", "routes", "charts", "codes", "positions",
-        "videomaps", "procedures", "scratchpads", "nctvisualizer", "zoavisualizer"
-    };
-
-    private List<string> _orderedKeys = new(_defaultOrder);
+    private List<string> _orderedKeys = new(NavItems.DefaultOrder);
     private bool _reorderMode;
     private ElementReference _ulRef;
     private IJSObjectReference? _module;
@@ -60,8 +38,8 @@
             if (saved is { Length: > 0 })
             {
                 // Only use saved keys that still exist, then append any new ones
-                var validSaved = saved.Where(k => _allNavItems.ContainsKey(k)).ToList();
-                var missing = _defaultOrder.Where(k => !validSaved.Contains(k));
+                var validSaved = saved.Where(k => NavItems.All.ContainsKey(k)).ToList();
+                var missing = NavItems.DefaultOrder.Where(k => !validSaved.Contains(k));
                 _orderedKeys = validSaved.Concat(missing).ToList();
                 StateHasChanged();
             }
@@ -83,8 +61,8 @@
     [JSInvokable]
     public void OnOrderChanged(string[] newOrder)
     {
-        var valid = newOrder.Where(k => _allNavItems.ContainsKey(k)).ToList();
-        var missing = _defaultOrder.Where(k => !valid.Contains(k));
+        var valid = newOrder.Where(k => NavItems.All.ContainsKey(k)).ToList();
+        var missing = NavItems.DefaultOrder.Where(k => !valid.Contains(k));
         _orderedKeys = valid.Concat(missing).ToList();
         InvokeAsync(StateHasChanged);
     }
