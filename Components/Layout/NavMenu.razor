@@ -48,6 +48,7 @@
     private bool _reorderMode;
     private ElementReference _ulRef;
     private IJSObjectReference? _module;
+    private IJSObjectReference? _dragHandle;
     private DotNetObjectReference<NavMenu>? _dotnetRef;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -66,16 +67,16 @@
             }
 
             _dotnetRef = DotNetObjectReference.Create(this);
-            await _module.InvokeVoidAsync("enableDragDrop", _ulRef, _dotnetRef);
+            _dragHandle = await _module.InvokeAsync<IJSObjectReference>("enableDragDrop", _ulRef, _dotnetRef);
         }
     }
 
     private async Task ToggleReorderMode()
     {
         _reorderMode = !_reorderMode;
-        if (_module is not null)
+        if (_module is not null && _dragHandle is not null)
         {
-            await _module.InvokeVoidAsync("setDraggable", _ulRef, _reorderMode);
+            await _module.InvokeVoidAsync("setDraggable", _dragHandle, _ulRef, _reorderMode);
         }
     }
 
@@ -93,6 +94,10 @@
         try
         {
             _dotnetRef?.Dispose();
+            if (_dragHandle is not null)
+            {
+                await _dragHandle.DisposeAsync();
+            }
             if (_module is not null)
             {
                 await _module.DisposeAsync();

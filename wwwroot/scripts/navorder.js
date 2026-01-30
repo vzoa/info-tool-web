@@ -16,6 +16,7 @@ export function saveOrder(order) {
 
 export function enableDragDrop(ulElement, dotnetRef) {
     let draggedLi = null;
+    let reorderEnabled = false;
 
     const getLis = () => Array.from(ulElement.querySelectorAll("li[data-nav-key]"));
 
@@ -27,6 +28,7 @@ export function enableDragDrop(ulElement, dotnetRef) {
     };
 
     ulElement.addEventListener("dragstart", (e) => {
+        if (!reorderEnabled) { e.preventDefault(); return; }
         const li = e.target.closest("li[data-nav-key]");
         if (!li) return;
         draggedLi = li;
@@ -42,6 +44,7 @@ export function enableDragDrop(ulElement, dotnetRef) {
     });
 
     ulElement.addEventListener("dragover", (e) => {
+        if (!reorderEnabled) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = "move";
 
@@ -68,6 +71,7 @@ export function enableDragDrop(ulElement, dotnetRef) {
     });
 
     ulElement.addEventListener("drop", (e) => {
+        if (!reorderEnabled) return;
         e.preventDefault();
         const targetLi = e.target.closest("li[data-nav-key]");
         if (!targetLi || !draggedLi || targetLi === draggedLi) return;
@@ -91,9 +95,14 @@ export function enableDragDrop(ulElement, dotnetRef) {
         saveOrder(without);
         dotnetRef.invokeMethodAsync("OnOrderChanged", without);
     });
+
+    return {
+        setReorderEnabled(enabled) { reorderEnabled = enabled; }
+    };
 }
 
-export function setDraggable(ulElement, enabled) {
+export function setDraggable(handle, ulElement, enabled) {
+    handle.setReorderEnabled(enabled);
     ulElement.querySelectorAll("li[data-nav-key]").forEach(li => {
         if (enabled) {
             li.setAttribute("draggable", "true");
