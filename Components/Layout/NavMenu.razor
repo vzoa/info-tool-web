@@ -1,19 +1,106 @@
-﻿<div class="bg-slate-950 shadow-lg sticky left-0 top-0 z-40 flex items-center text-gray-400 border-b border-slate-700">
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+@inject IJSRuntime Js
+
+<div class="bg-slate-950 shadow-lg sticky left-0 top-0 z-40 flex items-center text-gray-400 border-b border-slate-700">
     <div>
         <LiveTime/>
     </div>
-    <nav>
-        <ul class="flex list-none items-center p-1">
-            <NavButton href="/atis">ATIS</NavButton>
-            <NavButton href="/routes">Routes</NavButton>
-            <NavButton href="/charts">Charts</NavButton>
-            <NavButton href="/codes">ICAO Codes</NavButton>
-            <NavButton href="/positions">Positions</NavButton>
-            <NavButton href="/videomaps">STARS Video Maps</NavButton>
-            <NavButton href="/procedures">Procedures</NavButton>
-            <NavButton href="/scratchpads">Scratchpads</NavButton>
-            <NavButton href="/nctvisualizer">NCT Viz</NavButton>
-            <NavButton href="/zoavisualizer">ZOA Viz</NavButton>
+    <nav class="flex items-center flex-1 min-w-0">
+        <ul @ref="_ulRef" class="flex list-none items-center p-1">
+            @foreach (var key in _orderedKeys)
+            {
+                var item = _allNavItems[key];
+                <NavButton @key="key" Key="@key" href="@item.Href">@item.Label</NavButton>
+            }
         </ul>
+        <button @onclick="ToggleReorderMode"
+                class="ml-auto mr-2 text-xs whitespace-nowrap px-2 py-1 rounded transition-colors @(_reorderMode ? "bg-orange-700 text-gray-100" : "text-gray-500 hover:text-gray-300")">
+            @(_reorderMode ? "Done" : "Reorder")
+        </button>
     </nav>
 </div>
+
+@code {
+    private record NavItem(string Href, string Label);
+
+    private static readonly Dictionary<string, NavItem> _allNavItems = new()
+    {
+        ["atis"] = new("/atis", "ATIS"),
+        ["routes"] = new("/routes", "Routes"),
+        ["charts"] = new("/charts", "Charts"),
+        ["codes"] = new("/codes", "ICAO Codes"),
+        ["positions"] = new("/positions", "Positions"),
+        ["videomaps"] = new("/videomaps", "STARS Video Maps"),
+        ["procedures"] = new("/procedures", "Procedures"),
+        ["scratchpads"] = new("/scratchpads", "Scratchpads"),
+        ["nctvisualizer"] = new("/nctvisualizer", "NCT Viz"),
+        ["zoavisualizer"] = new("/zoavisualizer", "ZOA Viz"),
+    };
+
+    private static readonly List<string> _defaultOrder = new()
+    {
+        "atis", "routes", "charts", "codes", "positions",
+        "videomaps", "procedures", "scratchpads", "nctvisualizer", "zoavisualizer"
+    };
+
+    private List<string> _orderedKeys = new(_defaultOrder);
+    private bool _reorderMode;
+    private ElementReference _ulRef;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<NavMenu>? _dotnetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _module = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/navorder.js");
+            var saved = await _module.InvokeAsync<string[]?>("loadOrder");
+            if (saved is { Length: > 0 })
+            {
+                // Only use saved keys that still exist, then append any new ones
+                var validSaved = saved.Where(k => _allNavItems.ContainsKey(k)).ToList();
+                var missing = _defaultOrder.Where(k => !validSaved.Contains(k));
+                _orderedKeys = validSaved.Concat(missing).ToList();
+                StateHasChanged();
+            }
+
+            _dotnetRef = DotNetObjectReference.Create(this);
+            await _module.InvokeVoidAsync("enableDragDrop", _ulRef, _dotnetRef);
+        }
+    }
+
+    private async Task ToggleReorderMode()
+    {
+        _reorderMode = !_reorderMode;
+        if (_module is not null)
+        {
+            await _module.InvokeVoidAsync("setDraggable", _ulRef, _reorderMode);
+        }
+    }
+
+    [JSInvokable]
+    public void OnOrderChanged(string[] newOrder)
+    {
+        var valid = newOrder.Where(k => _allNavItems.ContainsKey(k)).ToList();
+        var missing = _defaultOrder.Where(k => !valid.Contains(k));
+        _orderedKeys = valid.Concat(missing).ToList();
+        InvokeAsync(StateHasChanged);
+    }
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        try
+        {
+            _dotnetRef?.Dispose();
+            if (_module is not null)
+            {
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // Expected during circuit disconnect
+        }
+    }
+}

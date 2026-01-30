@@ -1,4 +1,4 @@
-﻿<li>
+<li data-nav-key="@Key">
     <NavLink href="@Href"
              Match="@Match"
              class="mx-1.5 whitespace-nowrap p-2 transition-colors hover:text-gray-100 flex items-center"
@@ -15,10 +15,13 @@
 
     [Parameter]
     public string Href { get; set; } = string.Empty;
-    
+
     [Parameter]
     public string Target { get; set; } = string.Empty;
 
     [Parameter]
     public NavLinkMatch Match { get; set; } = NavLinkMatch.All;
+
+    [Parameter]
+    public string Key { get; set; } = string.Empty;
 }
