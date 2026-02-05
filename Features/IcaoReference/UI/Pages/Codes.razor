@@ -136,8 +136,8 @@
 
         bool MatchCode(Airport a) =>
             isCode && (
-                a.IcaoId.Equals(trimmed, StringComparison.OrdinalIgnoreCase)
-                || a.LocalId.Equals(trimmed, StringComparison.OrdinalIgnoreCase)
+                a.IcaoId.Contains(trimmed, StringComparison.OrdinalIgnoreCase)
+                || a.LocalId.Contains(trimmed, StringComparison.OrdinalIgnoreCase)
             );
 
         // Search by ICAO/Local ID if the query is 3 or 4 characters
@@ -145,7 +145,7 @@
         _displayedAirports = Airports.AllAirports
             .Where(a => a.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase)
                         || MatchCode(a))
-            .OrderBy(MatchCode)
+            .OrderByDescending(MatchCode)
             .ThenBy(a => a.Name);
     }
 
