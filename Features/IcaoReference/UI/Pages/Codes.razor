@@ -133,16 +133,20 @@
     {
         var trimmed = _airportForm.Search.Trim();
         var isCode = trimmed.Length is 3 or 4;
-        
-        // Search by ICAO/Local ID if the query is 3 or 4 characters
-        //  OR if the name contains the query. 
 
+        bool MatchCode(Airport a) =>
+            isCode && (
+                a.IcaoId.Equals(trimmed, StringComparison.OrdinalIgnoreCase)
+                || a.LocalId.Equals(trimmed, StringComparison.OrdinalIgnoreCase)
+            );
+
+        // Search by ICAO/Local ID if the query is 3 or 4 characters
+        // followed by the airport name 
         _displayedAirports = Airports.AllAirports
-            .Where(a => a.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase) 
-                        || (isCode && (
-                            a.IcaoId.Equals(trimmed, StringComparison.OrdinalIgnoreCase) 
-                            || a.LocalId.Equals(trimmed, StringComparison.OrdinalIgnoreCase)
-                        )));
+            .Where(a => a.Name.Contains(trimmed, StringComparison.OrdinalIgnoreCase)
+                        || MatchCode(a))
+            .OrderBy(MatchCode)
+            .ThenBy(a => a.Name);
     }
 
     private class AircraftForm
