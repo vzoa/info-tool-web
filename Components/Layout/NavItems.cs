@@ -14,13 +14,12 @@ public static class NavItems
         ["videomaps"] = new("/videomaps", "STARS Video Maps"),
         ["procedures"] = new("/procedures", "Procedures"),
         ["scratchpads"] = new("/scratchpads", "Scratchpads"),
-        ["nctvisualizer"] = new("/nctvisualizer", "NCT Viz"),
-        ["zoavisualizer"] = new("/zoavisualizer", "ZOA Viz"),
+        ["airspaceviz"] = new("/airspaceviz", "Airspace Viz"),
     };
 
     public static readonly List<string> DefaultOrder =
     [
         "atis", "routes", "charts", "codes", "positions",
-        "videomaps", "procedures", "scratchpads", "nctvisualizer", "zoavisualizer"
+        "videomaps", "procedures", "scratchpads", "airspaceviz"
     ];
 }
