@@ -6,20 +6,20 @@ public static class NavItems
 {
     public static readonly Dictionary<string, NavItem> All = new()
     {
-        ["atis"] = new("/atis", "ATIS"),
         ["routes"] = new("/routes", "Routes"),
         ["charts"] = new("/charts", "Charts"),
-        ["codes"] = new("/codes", "ICAO Codes"),
-        ["positions"] = new("/positions", "Positions"),
-        ["videomaps"] = new("/videomaps", "STARS Video Maps"),
+        ["codes"] = new("/codes", "ICAO Search"),
         ["procedures"] = new("/procedures", "Procedures"),
+        ["atis"] = new("/atis", "D-ATIS"),
+        ["videomaps"] = new("/videomaps", "STARS Video Maps"),
         ["scratchpads"] = new("/scratchpads", "Scratchpads"),
+        ["positions"] = new("/positions", "Positions"),
         ["airspaceviz"] = new("/airspaceviz", "Airspace Viz"),
     };
 
     public static readonly List<string> DefaultOrder =
     [
-        "atis", "routes", "charts", "codes", "positions",
-        "videomaps", "procedures", "scratchpads", "airspaceviz"
+        "routes", "charts", "codes", "procedures", "atis", 
+        "videomaps", "scratchpads", "positions", "airspaceviz"
     ];
 }
