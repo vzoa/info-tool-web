@@ -16,7 +16,7 @@
             <optgroup label="@category.Name" class="text-gray-400">
                 @foreach (var doc in category.Documents)
                 {
-                    <option value="@MakePdfPath(doc.Url)" class="text-gray-100">@doc.Name</option>
+                    <option value="@doc.Url" class="text-gray-100">@doc.Name</option>
                 }
             </optgroup>
         }
