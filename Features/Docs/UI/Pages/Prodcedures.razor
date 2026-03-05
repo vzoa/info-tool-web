@@ -25,9 +25,7 @@
 @if (!string.IsNullOrEmpty(_displayedPdfUrl))
 {
     <div class="grow flex flex-col">
-        <object class="mt-2 pt-1 w-full grow" type="application/pdf" data="@_displayedPdfUrl">
-            <p class="text-gray-400 p-4">Unable to display PDF: @Path.GetFileName(_displayedPdfUrl)</p>
-        </object>
+        <object class="mt-2 pt-1 w-full grow" type="application/pdf" data="@_displayedPdfUrl"></object>
     </div>
 }
 
@@ -66,7 +64,7 @@
     private string MakePdfPath(string url)
     {
         var name = GetPdfNameFromUrl(url);
-        return $"{AppSettings.CurrentValue.DocumentsPdfPath}/{name}.pdf";
+        return $"{AppSettings.CurrentValue.DocumentsPdfPath}/{Path.ChangeExtension(name, ".pdf")}";
     }
 
     private async Task UpdateStoredUrl()
