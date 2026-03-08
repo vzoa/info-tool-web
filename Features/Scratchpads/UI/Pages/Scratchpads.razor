@@ -1,11 +1,10 @@
-﻿@page "/scratchpads"
+@page "/scratchpads"
 @using ZoaReference.Features.Scratchpads.Models
 @using ZoaReference.Features.Scratchpads.Repositories
 @rendermode InteractiveServer
 
 @inject IJSRuntime Js
 @inject ScratchpadsRepository ScratchpadRepository
-@inject ProtectedSessionStorage ProtectedSessionStore
 
 <PageTitle>Scratchpads - ZOA Reference</PageTitle>
 
@@ -31,6 +30,7 @@
     private string _selectedFacilityId = "";
     private IEnumerable<Scratchpad> _selectedScratchpads = [];
     private ElementReference _dropdown;
+    private IJSObjectReference? _storage;
 
     protected override void OnInitialized()
     {
@@ -41,12 +41,13 @@
     {
         if (firstRender)
         {
-            var savedStateTask = await ProtectedSessionStore.GetAsync<string>("scratchpadsSelectedFacilityId");
-            if (savedStateTask is { Success: true, Value: not null })
+            _storage = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/storage.js");
+            var savedFacilityId = await _storage.InvokeAsync<string?>("get", "scratchpadsSelectedFacilityId");
+            if (savedFacilityId is not null)
             {
-                if (ScratchpadRepository.TryGetValue(savedStateTask.Value, out var foundScratchpads))
+                if (ScratchpadRepository.TryGetValue(savedFacilityId, out var foundScratchpads))
                 {
-                    _selectedFacilityId = savedStateTask.Value;
+                    _selectedFacilityId = savedFacilityId;
                     _selectedScratchpads = foundScratchpads!;
                 }
 
@@ -64,7 +65,10 @@
         {
             _selectedFacilityId = value;
             _selectedScratchpads = foundScratchpads!;
-            await ProtectedSessionStore.SetAsync("scratchpadsSelectedFacilityId", _selectedFacilityId);
+            if (_storage is not null)
+            {
+                await _storage.InvokeVoidAsync("set", "scratchpadsSelectedFacilityId", _selectedFacilityId);
+            }
         }
     }
 
