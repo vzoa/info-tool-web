@@ -16,7 +16,7 @@
             <optgroup label="@category.Name" class="text-gray-400">
                 @foreach (var doc in category.Documents)
                 {
-                    <option value="@MakePdfPath(doc.Url)" class="text-gray-100">@doc.Name</option>
+                    <option value="@doc.Url" class="text-gray-100">@doc.Name</option>
                 }
             </optgroup>
         }
@@ -24,10 +24,8 @@
 </div>
 @if (!string.IsNullOrEmpty(_displayedPdfUrl))
 {
-    <div class="grow flex items-stretch">
-        <div class="w-full mt-2">
-            <object class="pt-1 h-full w-full" type="application/pdf" data="@_displayedPdfUrl"></object>
-        </div>
+    <div class="grow flex flex-col">
+        <object class="mt-2 pt-1 w-full grow" type="application/pdf" data="@_displayedPdfUrl"></object>
     </div>
 }
 
@@ -39,27 +37,22 @@
     {
         if (firstRender)
         {
-            var savedStateTask = await ProtectedSessionStore.GetAsync<string>("proceduresPdfUrl");
-            if (!savedStateTask.Success || savedStateTask.Value is null)
+            try
             {
-                return;
+                var savedStateTask = await ProtectedSessionStore.GetAsync<string>("proceduresPdfUrl");
+                if (!savedStateTask.Success || savedStateTask.Value is null)
+                {
+                    return;
+                }
+
+                _displayedPdfUrl = savedStateTask.Value;
+                StateHasChanged();
             }
-
-            _displayedPdfUrl = savedStateTask.Value;
-            StateHasChanged();
+            catch
+            {
+                // Session storage data may be unreadable (e.g. stale data after server restart)
+            }
         }
-    }
-
-    private static string GetPdfNameFromUrl(string url)
-    {
-        var uri = new Uri(url);
-        return Path.GetFileName(uri.AbsolutePath);
-    }
-
-    private string MakePdfPath(string url)
-    {
-        var name = GetPdfNameFromUrl(url);
-        return $"{AppSettings.CurrentValue.DocumentsPdfPath}/{name}.pdf";
     }
 
     private async Task UpdateStoredUrl()
