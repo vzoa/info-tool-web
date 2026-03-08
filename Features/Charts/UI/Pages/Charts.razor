@@ -112,7 +112,7 @@
                         }
                     </div>
                 }
-                <object class="pt-1 w-full grow" type="application/pdf" data="@_displayedChartPage?.PdfPath"></object>
+                <object class="pt-1 w-full grow" type="application/pdf" data="@(_displayedChartPage?.PdfPath + "#view=FitH")"></object>
             </div>
         }
     </div>
