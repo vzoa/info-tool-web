@@ -41,16 +41,23 @@
     {
         if (firstRender)
         {
-            var savedStateTask = await ProtectedSessionStore.GetAsync<string>("scratchpadsSelectedFacilityId");
-            if (savedStateTask is { Success: true, Value: not null })
+            try
             {
-                if (ScratchpadRepository.TryGetValue(savedStateTask.Value, out var foundScratchpads))
+                var savedStateTask = await ProtectedSessionStore.GetAsync<string>("scratchpadsSelectedFacilityId");
+                if (savedStateTask is { Success: true, Value: not null })
                 {
-                    _selectedFacilityId = savedStateTask.Value;
-                    _selectedScratchpads = foundScratchpads!;
-                }
+                    if (ScratchpadRepository.TryGetValue(savedStateTask.Value, out var foundScratchpads))
+                    {
+                        _selectedFacilityId = savedStateTask.Value;
+                        _selectedScratchpads = foundScratchpads!;
+                    }
 
-                StateHasChanged();
+                    StateHasChanged();
+                }
+            }
+            catch
+            {
+                // Session storage data may be unreadable after an app update
             }
 
             await Js.InvokeVoidAsync("SetFocusToElement", _dropdown);

@@ -55,17 +55,24 @@
     {
         if (firstRender)
         {
-            var savedStateTask = await ProtectedSessionStore.GetAsync<string>("videomapsSelectedFacilityId");
-            if (savedStateTask is { Success: true, Value: not null })
+            try
             {
-                var facility = _facilities.FirstOrDefault(f => f.Facility.Id == savedStateTask.Value);
-                if (facility is not null)
+                var savedStateTask = await ProtectedSessionStore.GetAsync<string>("videomapsSelectedFacilityId");
+                if (savedStateTask is { Success: true, Value: not null })
                 {
-                    _selectedFacilityId = savedStateTask.Value;
-                    _selectedFacility = facility;
-                }
+                    var facility = _facilities.FirstOrDefault(f => f.Facility.Id == savedStateTask.Value);
+                    if (facility is not null)
+                    {
+                        _selectedFacilityId = savedStateTask.Value;
+                        _selectedFacility = facility;
+                    }
 
-                StateHasChanged();
+                    StateHasChanged();
+                }
+            }
+            catch
+            {
+                // Session storage data may be unreadable after an app update
             }
 
             await Js.InvokeVoidAsync("SetFocusToElement", _input);

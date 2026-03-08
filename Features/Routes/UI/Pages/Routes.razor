@@ -170,12 +170,19 @@
     {
         if (firstRender)
         {
-            var savedStateTask = await ProtectedSessionStore.GetAsync<SavedAirportPairRoutes>(SavedAirportPairRoutesStorageKey);
-            if (savedStateTask.Success)
+            try
             {
-                _routeForm.DepartureId = savedStateTask.Value.DepartureId;
-                _routeForm.ArrivalId = savedStateTask.Value.ArrivalId;
-                await RouteSubmit();
+                var savedStateTask = await ProtectedSessionStore.GetAsync<SavedAirportPairRoutes>(SavedAirportPairRoutesStorageKey);
+                if (savedStateTask.Success)
+                {
+                    _routeForm.DepartureId = savedStateTask.Value.DepartureId;
+                    _routeForm.ArrivalId = savedStateTask.Value.ArrivalId;
+                    await RouteSubmit();
+                }
+            }
+            catch
+            {
+                // Session storage data may be unreadable after an app update
             }
 
             StateHasChanged();
