@@ -1,4 +1,4 @@
-﻿@page "/charts/{airportId?}"
+@page "/charts/{airportId?}"
 @using System.Text.RegularExpressions
 @using Microsoft.Extensions.Options
 @using ZoaReference.Features.Charts.Models
@@ -7,7 +7,6 @@
 
 @inject AviationApiChartService AviationApiChartService
 @inject IOptionsMonitor<AppSettings> AppSettings
-@inject ProtectedLocalStorage ProtectedLocalStore
 @inject IJSRuntime Js
 
 <PageTitle>Charts - ZOA Reference</PageTitle>
@@ -139,11 +138,12 @@
         public string AirportId { get; set; }
     }
 
-    private const string CustomAirportsSessionStorageKey = "customAirports";
-    private const string ChartStateSessionStorageKey = "chartState";
+    private const string CustomAirportsStorageKey = "customAirports";
+    private const string ChartStateStorageKey = "chartState";
 
     private ElementReference _filterInput;
     private string _filterInputText = "";
+    private IJSObjectReference? _storage;
 
     private OrganizedCharts FilteredCharts => new()
     {
@@ -173,15 +173,18 @@
 
         await UpdateCharts(newAirport.Id);
 
-        var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
-        if (savedCustomAirportsTask is { Success: true, Value: not null })
+        if (_storage is not null)
         {
-            savedCustomAirportsTask.Value.Add(new SavedAirport(newAirport.Id, newAirport.Guid));
-            await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, savedCustomAirportsTask.Value);
-        }
-        else
-        {
-            await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, new List<SavedAirport> { new(newAirport.Id, newAirport.Guid) });
+            var savedCustomAirports = await _storage.InvokeAsync<List<SavedAirport>?>("get", CustomAirportsStorageKey);
+            if (savedCustomAirports is not null)
+            {
+                savedCustomAirports.Add(new SavedAirport(newAirport.Id, newAirport.Guid));
+                await _storage.InvokeVoidAsync("set", CustomAirportsStorageKey, savedCustomAirports);
+            }
+            else
+            {
+                await _storage.InvokeVoidAsync("set", CustomAirportsStorageKey, new List<SavedAirport> { new(newAirport.Id, newAirport.Guid) });
+            }
         }
     }
 
@@ -198,11 +201,9 @@
                 _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
             }
 
-            var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
-            if (savedCustomAirportsTask is { Success: true, Value: not null })
+            if (_storage is not null)
             {
-                _airports.RemoveAll(a => a.Type == AirportType.Other);
-                await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, savedCustomAirportsTask.Value);
+                await _storage.InvokeVoidAsync("set", CustomAirportsStorageKey, new List<SavedAirport>());
             }
         }
         else
@@ -215,11 +216,14 @@
                 _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
             }
 
-            var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
-            if (savedCustomAirportsTask is { Success: true, Value: not null })
+            if (_storage is not null)
             {
-                savedCustomAirportsTask.Value.RemoveAll(a => a.Guid == airport.Guid);
-                await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, savedCustomAirportsTask.Value);
+                var savedCustomAirports = await _storage.InvokeAsync<List<SavedAirport>?>("get", CustomAirportsStorageKey);
+                if (savedCustomAirports is not null)
+                {
+                    savedCustomAirports.RemoveAll(a => a.Guid == airport.Guid);
+                    await _storage.InvokeVoidAsync("set", CustomAirportsStorageKey, savedCustomAirports);
+                }
             }
         }
     }
@@ -250,29 +254,36 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+        {
+            if (_airportInputShown && _airportInputReference?.Element is not null)
+            {
+                await _airportInputReference.Element.Value.FocusAsync();
+            }
+            return;
+        }
+
+        _storage = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/storage.js");
         var stateUpdated = false;
 
-        if (firstRender && AirportId is null)
+        if (AirportId is null)
         {
-            var savedStateTask = await ProtectedLocalStore.GetAsync<ChartState>(ChartStateSessionStorageKey);
-            if (savedStateTask is { Success: true, Value: not null })
+            var savedState = await _storage.InvokeAsync<ChartState?>("get", ChartStateStorageKey);
+            if (savedState is not null)
             {
-                await UpdateCharts(savedStateTask.Value.AirportId);
-                _displayedChart = savedStateTask.Value.Chart;
-                _displayedChartPage = savedStateTask.Value.Page;
+                await UpdateCharts(savedState.AirportId);
+                _displayedChart = savedState.Chart;
+                _displayedChartPage = savedState.Page;
                 stateUpdated = true;
             }
         }
 
-        if (firstRender)
+        var savedCustomAirports = await _storage.InvokeAsync<List<SavedAirport>?>("get", CustomAirportsStorageKey);
+        if (savedCustomAirports is not null)
         {
-            var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
-            if (savedCustomAirportsTask is { Success: true, Value: not null })
-            {
-                var customAirports = savedCustomAirportsTask.Value.Select(a => new Airport(a.Id, AirportType.Other, a.Guid));
-                _airports.AddRange(customAirports);
-                stateUpdated = true;
-            }
+            var customAirports = savedCustomAirports.Select(a => new Airport(a.Id, AirportType.Other, a.Guid));
+            _airports.AddRange(customAirports);
+            stateUpdated = true;
         }
 
         if (_airportInputShown && _airportInputReference?.Element is not null)
@@ -304,7 +315,10 @@
     private async Task UpdateDisplayedChartPage(ChartPage page)
     {
         _displayedChartPage = page;
-        await ProtectedLocalStore.SetAsync(ChartStateSessionStorageKey, new ChartState(_airportId, _displayedChart, _displayedChartPage));
+        if (_storage is not null)
+        {
+            await _storage.InvokeVoidAsync("set", ChartStateStorageKey, new ChartState(_airportId, _displayedChart, _displayedChartPage));
+        }
     }
 
     private async Task ClearFilterInput(bool setFocus = true)

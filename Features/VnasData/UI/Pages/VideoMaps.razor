@@ -1,11 +1,10 @@
-﻿@page "/videomaps"
+@page "/videomaps"
 @using ZoaReference.Features.VnasData.Models
 @using ZoaReference.Features.VnasData.Services
 @rendermode InteractiveServer
 
 @inject CachedVnasDataService VnasData
 @inject IJSRuntime Js
-@inject ProtectedSessionStorage ProtectedSessionStore
 
 <PageTitle>Vid Maps - ZOA Reference</PageTitle>
 
@@ -38,6 +37,7 @@
         .ByAscending(p => p.StarsId);
 
     private ElementReference _input;
+    private IJSObjectReference? _storage;
 
     private IQueryable<VideoMap> FilteredMaps =>
         _selectedFacility is null
@@ -55,13 +55,14 @@
     {
         if (firstRender)
         {
-            var savedStateTask = await ProtectedSessionStore.GetAsync<string>("videomapsSelectedFacilityId");
-            if (savedStateTask is { Success: true, Value: not null })
+            _storage = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/storage.js");
+            var savedFacilityId = await _storage.InvokeAsync<string?>("get", "videomapsSelectedFacilityId");
+            if (savedFacilityId is not null)
             {
-                var facility = _facilities.FirstOrDefault(f => f.Facility.Id == savedStateTask.Value);
+                var facility = _facilities.FirstOrDefault(f => f.Facility.Id == savedFacilityId);
                 if (facility is not null)
                 {
-                    _selectedFacilityId = savedStateTask.Value;
+                    _selectedFacilityId = savedFacilityId;
                     _selectedFacility = facility;
                 }
 
@@ -79,7 +80,10 @@
         {
             _selectedFacilityId = value;
             _selectedFacility = facility;
-            await ProtectedSessionStore.SetAsync("videomapsSelectedFacilityId", _selectedFacilityId);
+            if (_storage is not null)
+            {
+                await _storage.InvokeVoidAsync("set", "videomapsSelectedFacilityId", _selectedFacilityId);
+            }
         }
     }
 
