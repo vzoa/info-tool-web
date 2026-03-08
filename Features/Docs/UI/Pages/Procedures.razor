@@ -55,18 +55,6 @@
         }
     }
 
-    private static string GetPdfNameFromUrl(string url)
-    {
-        var uri = new Uri(url);
-        return Path.GetFileName(uri.AbsolutePath);
-    }
-
-    private string MakePdfPath(string url)
-    {
-        var name = GetPdfNameFromUrl(url);
-        return $"{AppSettings.CurrentValue.DocumentsPdfPath}/{Path.ChangeExtension(name, ".pdf")}";
-    }
-
     private async Task UpdateStoredUrl()
     {
         await ProtectedSessionStore.SetAsync("proceduresPdfUrl", _displayedPdfUrl);
