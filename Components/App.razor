@@ -1,4 +1,7 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
+
+<!DOCTYPE html>
 <html lang="en" class="min-h-screen">
 
 <head>
@@ -31,7 +34,7 @@
         };
     </script>
     <HeadOutlet/>
-    <title>ZOA Reference</title>
+    <title>@Settings.Value.ARTCC Reference</title>
 </head>
 
 <body class="bg-slate-800 text-gray-100 min-h-screen">

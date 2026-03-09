@@ -14,7 +14,10 @@
 @inject IJSRuntime Js
 @inject ProtectedSessionStorage ProtectedSessionStore
 
-<PageTitle>Routes - ZOA Reference</PageTitle>
+@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
+
+<PageTitle>Routes - @Settings.Value.ARTCC Reference</PageTitle>
 
 
 <div class="flex flex-col text-s gap-8">

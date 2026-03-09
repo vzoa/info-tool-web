@@ -3,9 +3,12 @@
 @using ZoaReference.Features.DigitalAtis.Repositories
 @implements IDisposable;
 
+@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
+
 @inject DigitalAtisRepository AtisRepository;
 
-<PageTitle>ATIS - ZOA Reference</PageTitle>
+<PageTitle>ATIS - @Settings.Value.ARTCC Reference</PageTitle>
 
 @if (_atisList is not null)
 {
