@@ -31,7 +31,9 @@ public class PositionCommand(CachedVnasDataService vnasDataService) : ITerminalC
             .Where(p =>
                 p.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
                 p.Callsign.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                p.RadioName.Contains(query, StringComparison.OrdinalIgnoreCase))
+                p.RadioName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                p.Tcp.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                FormatFrequency(p.Frequency).Contains(query, StringComparison.OrdinalIgnoreCase))
             .Take(30)
             .ToList();
 

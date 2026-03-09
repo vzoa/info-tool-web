@@ -36,7 +36,7 @@ public class AirlineCommand(AirlineRepository airlineRepository) : ITerminalComm
 
         var sb = new StringBuilder();
         var widths = new[] { 8, 16, 36, 20 };
-        sb.Append(TextFormatter.FormatTableHeader($"Airlines — '{query}'", ["ICAO", "Callsign", "Name", "Country"], widths));
+        sb.Append(TextFormatter.FormatTableHeader($"Airlines — '{query}'", ["ICAO", "Telephony", "Name", "Country"], widths));
 
         foreach (var airline in results)
         {

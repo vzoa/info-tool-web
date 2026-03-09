@@ -11,11 +11,15 @@ public class RouteCommand(
     AliasRouteRuleRepository aliasRouteRuleRepository,
     LoaRuleRepository loaRuleRepository) : ITerminalCommand
 {
+    private const int DefaultMaxRoutes = 5;
+
     public string Name => "route";
     public string[] Aliases => ["rt"];
     public string Summary => "Look up routes between airports";
     public string Usage => "route <departure> <arrival>\n" +
-                           "    route KSFO KLAX  — Preferred + real-world routes";
+                           "    route SFO LAX         — Preferred + top 5 real-world routes\n" +
+                           "    route SFO LAX -a      — Show all real-world routes\n" +
+                           "    route SFO LAX -n 10   — Show top 10 real-world routes";
 
     public async Task<CommandResult> ExecuteAsync(CommandArgs args)
     {
@@ -26,6 +30,12 @@ public class RouteCommand(
 
         var dep = AirportIdHelper.NormalizeToIcao(args.Positional[0]);
         var arr = AirportIdHelper.NormalizeToIcao(args.Positional[1]);
+        var showAll = args.Flags.ContainsKey("all") || args.Flags.ContainsKey("a");
+        var maxRoutes = showAll ? (int?)null : DefaultMaxRoutes;
+        if (args.Flags.TryGetValue("n", out var nVal) && int.TryParse(nVal, out var n))
+        {
+            maxRoutes = n;
+        }
 
         var sb = new StringBuilder();
 
@@ -36,12 +46,16 @@ public class RouteCommand(
 
         if (aliasRules.Count > 0)
         {
-            var widths = new[] { 12, 68 };
-            sb.Append(TextFormatter.FormatTableHeader($"Preferred Routes: {dep} → {arr}", ["Type", "Route"], widths));
+            var widths = new[] { 10, 10, 12, 48 };
+            sb.Append(TextFormatter.FormatTableHeader(
+                $"Preferred Routes: {dep} → {arr}",
+                ["Dep Rwy", "Arr Rwy", "Types", "Route"], widths));
             foreach (var rule in aliasRules)
             {
                 var type = FormatAircraftTypes(rule.AllowedAircraftTypes);
-                sb.AppendLine(TextFormatter.FormatTableRow([type, rule.Route], widths));
+                var depRwy = rule.DepartureRunway?.ToString() ?? "";
+                var arrRwy = rule.ArrivalRunway?.ToString() ?? "";
+                sb.AppendLine(TextFormatter.FormatTableRow([depRwy, arrRwy, type, rule.Route], widths));
             }
             sb.AppendLine();
         }
@@ -53,12 +67,15 @@ public class RouteCommand(
 
         if (loaRules.Count > 0)
         {
-            var widths = new[] { 8, 60, 12 };
-            sb.Append(TextFormatter.FormatTableHeader($"LOA Routes: {dep} → {arr}", ["RNAV", "Route", "Notes"], widths));
+            var widths = new[] { 36, 8, 36 };
+            sb.Append(TextFormatter.FormatTableHeader(
+                $"LOA Routes: {dep} → {arr}",
+                ["Route", "RNAV?", "Notes"], widths));
             foreach (var rule in loaRules)
             {
                 var rnav = rule.IsRnavRequired ? "Yes" : "No";
-                sb.AppendLine(TextFormatter.FormatTableRow([rnav, rule.Route, rule.Notes ?? ""], widths));
+                sb.AppendLine(TextFormatter.FormatTableRow(
+                    [Truncate(rule.Route, 34), rnav, rule.Notes ?? ""], widths));
             }
             sb.AppendLine();
         }
@@ -67,16 +84,30 @@ public class RouteCommand(
         try
         {
             var routeData = await flightAwareRouteService.FetchRoutesAsync(dep, arr);
-            if (routeData.FlightRouteSummaries.Count > 0)
+            var allRoutes = routeData.FlightRouteSummaries
+                .OrderByDescending(r => r.RouteFrequency)
+                .ToList();
+
+            if (allRoutes.Count > 0)
             {
-                var widths = new[] { 8, 10, 62 };
-                sb.Append(TextFormatter.FormatTableHeader($"Real-World Routes: {dep} → {arr}", ["Freq", "Altitude", "Route"], widths));
-                foreach (var route in routeData.FlightRouteSummaries.OrderByDescending(r => r.RouteFrequency).Take(10))
+                var displayRoutes = maxRoutes.HasValue ? allRoutes.Take(maxRoutes.Value).ToList() : allRoutes;
+                var widths = new[] { 10, 46, 10 };
+                sb.Append(TextFormatter.FormatTableHeader(
+                    $"Real-World Routes: {dep} → {arr}",
+                    ["Freq", "Route", "Altitude"], widths));
+                foreach (var route in displayRoutes)
                 {
                     var alt = FormatAltRange(route.MinAltitude, route.MaxAltitude);
                     sb.AppendLine(TextFormatter.FormatTableRow(
-                        [route.RouteFrequency.ToString(), alt, Truncate(route.Route, 60)],
+                        [route.RouteFrequency.ToString(), Truncate(route.Route, 44), alt],
                         widths));
+                }
+
+                if (maxRoutes.HasValue && allRoutes.Count > maxRoutes.Value)
+                {
+                    sb.AppendLine(TextFormatter.Colorize(
+                        $"  Showing top {maxRoutes.Value} of {allRoutes.Count} routes (use -a for all)",
+                        AnsiColor.Gray));
                 }
             }
         }

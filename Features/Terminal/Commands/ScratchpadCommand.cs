@@ -10,14 +10,22 @@ public class ScratchpadCommand(ScratchpadsRepository scratchpadsRepository) : IT
     public string[] Aliases => ["scratch"];
     public string Summary => "Look up scratchpad entries for a facility";
     public string Usage => "scratchpad <facility>\n" +
-                           "    scratchpad NCT   — Show NorCal TRACON scratchpads\n" +
-                           "    scratchpad SFO   — Show SFO scratchpads";
+                           "    scratchpad NCT       — Show NorCal TRACON scratchpads\n" +
+                           "    scratchpad SFO       — Show SFO scratchpads\n" +
+                           "    scratchpad --list    — List available facilities";
 
     public Task<CommandResult> ExecuteAsync(CommandArgs args)
     {
+        if (args.Flags.ContainsKey("list"))
+        {
+            return Task.FromResult(ListFacilities());
+        }
+
         if (args.Positional.Length < 1)
         {
-            return Task.FromResult(CommandResult.FromError("Usage: scratchpad <facility>"));
+            var facilities = string.Join(", ", scratchpadsRepository.AllAirportIds);
+            return Task.FromResult(CommandResult.FromError(
+                $"Available facilities: {facilities}\nUsage: scratchpad <facility> or scratchpad --list"));
         }
 
         var facilityId = args.Positional[0].ToUpperInvariant();
@@ -48,6 +56,21 @@ public class ScratchpadCommand(ScratchpadsRepository scratchpadsRepository) : IT
         }
 
         return Task.FromResult(CommandResult.FromText(sb.ToString()));
+    }
+
+    private CommandResult ListFacilities()
+    {
+        var ids = scratchpadsRepository.AllAirportIds.ToList();
+        if (ids.Count == 0)
+        {
+            return new CommandResult(TextFormatter.FormatTableEmpty("Scratchpads", "No facilities loaded"));
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine(TextFormatter.Colorize("  Available Facilities", AnsiColor.Orange));
+        sb.AppendLine();
+        sb.AppendLine($"  {string.Join(", ", ids)}");
+        return CommandResult.FromText(sb.ToString());
     }
 
     public IEnumerable<string> GetCompletions(string partial, int argIndex)

@@ -25,7 +25,20 @@ public record CommandArgs(
             if (token.StartsWith("--"))
             {
                 var flagName = token[2..];
-                if (i + 1 < tokens.Count && !tokens[i + 1].StartsWith("--"))
+                if (i + 1 < tokens.Count && !tokens[i + 1].StartsWith('-'))
+                {
+                    flags[flagName] = tokens[i + 1];
+                    i++;
+                }
+                else
+                {
+                    flags[flagName] = null;
+                }
+            }
+            else if (token.StartsWith('-') && token.Length > 1 && !char.IsDigit(token[1]))
+            {
+                var flagName = token[1..];
+                if (i + 1 < tokens.Count && !tokens[i + 1].StartsWith('-'))
                 {
                     flags[flagName] = tokens[i + 1];
                     i++;

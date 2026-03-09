@@ -10,9 +10,10 @@ public class ApproachesCommand(StarApproachConnectionService connectionService) 
     public string Name => "approaches";
     public string[] Aliases => ["apps"];
     public string Summary => "Find approach charts connected to a STAR or fix";
-    public string Usage => "approaches <airport> <star|fix>\n" +
-                           "    approaches OAK CNDEL5  — Approaches connected to CNDEL5 STAR\n" +
-                           "    approaches OAK CNDEL   — Approaches via CNDEL fix";
+    public string Usage => "approaches <airport> <star|fix> [runways...]\n" +
+                           "    approaches OAK CNDEL5      — Approaches connected to CNDEL5 STAR\n" +
+                           "    approaches OAK CNDEL       — Approaches via CNDEL fix\n" +
+                           "    approaches RNO SCOLA1 17   — Filter to runway 17 (matches 17, 17L, 17R)";
 
     public async Task<CommandResult> ExecuteAsync(CommandArgs args)
     {
@@ -23,6 +24,9 @@ public class ApproachesCommand(StarApproachConnectionService connectionService) 
 
         var airportId = AirportIdHelper.NormalizeToIcao(args.Positional[0]);
         var query = args.Positional[1].ToUpperInvariant();
+        var runwayFilters = args.Positional.Length > 2
+            ? args.Positional[2..].Select(r => r.ToUpperInvariant()).ToList()
+            : [];
 
         List<ApproachConnection> connections;
         string headerLabel;
@@ -43,9 +47,19 @@ public class ApproachesCommand(StarApproachConnectionService connectionService) 
             headerLabel = $"Fix {query}";
         }
 
+        // Filter by runways if specified (partial match: "17" matches "17", "17L", "17R")
+        if (runwayFilters.Count > 0)
+        {
+            connections = connections
+                .Where(c => c.Runway is not null &&
+                    runwayFilters.Any(f => c.Runway.StartsWith(f, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+        }
+
         if (connections.Count == 0)
         {
-            return CommandResult.FromError($"No approach connections found for {headerLabel} at {airportId}");
+            var suffix = runwayFilters.Count > 0 ? $" (runways: {string.Join(", ", runwayFilters)})" : "";
+            return CommandResult.FromError($"No approach connections found for {headerLabel} at {airportId}{suffix}");
         }
 
         var sb = new StringBuilder();

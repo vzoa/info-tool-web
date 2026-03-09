@@ -11,18 +11,30 @@ public class AtisCommand(DigitalAtisRepository atisRepository) : ITerminalComman
     public string[] Aliases => [];
     public string Summary => "Display current ATIS information";
     public string Usage => "atis <airport>   — Show ATIS for a specific airport (e.g., atis SFO)\n" +
-                           "    atis --all       — Show ATIS for all available airports";
+                           "    atis --all/-a    — Show ATIS for all available airports\n" +
+                           "    atis all         — Same as --all";
 
     public Task<CommandResult> ExecuteAsync(CommandArgs args)
     {
-        if (args.Flags.ContainsKey("all"))
+        if (args.Flags.ContainsKey("all") || args.Flags.ContainsKey("a"))
         {
             return Task.FromResult(ShowAllAtis());
         }
 
         if (args.Positional.Length < 1)
         {
-            return Task.FromResult(CommandResult.FromError("Usage: atis <airport> or atis --all"));
+            var airports = atisRepository.GetAllAtis()
+                .Select(a => a.IcaoId)
+                .Distinct()
+                .Order();
+            var list = string.Join(", ", airports);
+            return Task.FromResult(CommandResult.FromError(
+                $"Available airports: {list}\nUsage: atis <airport> or atis --all"));
+        }
+
+        if (args.Positional[0].Equals("all", StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult(ShowAllAtis());
         }
 
         var airportId = AirportIdHelper.NormalizeToIcao(args.Positional[0]);

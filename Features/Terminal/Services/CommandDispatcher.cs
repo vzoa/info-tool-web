@@ -58,6 +58,18 @@ public class CommandDispatcher
 
         if (!_commands.TryGetValue(args.CommandName, out var command))
         {
+            // Implicit chart lookup: treat unknown commands as chart queries
+            // e.g. "OAK CNDEL5" → "chart OAK CNDEL5"
+            if (_commands.TryGetValue("chart", out var chartCommand))
+            {
+                var rewritten = CommandArgs.Parse($"chart {trimmed}");
+                var chartResult = await ExecuteWithTimingAsync(() => chartCommand.ExecuteAsync(rewritten));
+                if (chartResult.PendingSelections is { Count: > 0 })
+                {
+                    RegisterPendingSelections(chartResult.PendingSelections);
+                }
+                return chartResult;
+            }
             return CommandResult.FromError($"Unknown command: '{args.CommandName}'. Type 'help' for available commands.");
         }
 

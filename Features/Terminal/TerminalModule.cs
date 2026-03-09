@@ -30,6 +30,7 @@ public class TerminalModule : IServiceConfigurator
         services.AddSingleton<ITerminalCommand, ListCommand>();
         services.AddSingleton<ITerminalCommand, ClearCommand>();
         services.AddSingleton<ITerminalCommand, CloseCommand>();
+        services.AddSingleton<ITerminalCommand, MetarCommand>();
 
         // CommandDispatcher is scoped (one per circuit)
         services.AddScoped<CommandDispatcher>();

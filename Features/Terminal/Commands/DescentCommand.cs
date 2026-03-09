@@ -7,7 +7,7 @@ namespace ZoaReference.Features.Terminal.Commands;
 public class DescentCommand(NasrDataService nasrDataService) : ITerminalCommand
 {
     public string Name => "descent";
-    public string[] Aliases => ["desc"];
+    public string[] Aliases => ["desc", "des"];
     public string Summary => "Calculate descent planning (318 ft/nm glideslope)";
     public string Usage => "descent <from_alt> <to_alt_or_distance>\n" +
                            "    descent 350 100     — Distance needed from FL350 to FL100\n" +

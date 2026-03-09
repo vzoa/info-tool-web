@@ -35,15 +35,17 @@ public class AircraftCommand(AircraftTypeRepository aircraftTypeRepository) : IT
         }
 
         var sb = new StringBuilder();
-        var widths = new[] { 8, 20, 24, 8, 8, 8 };
+        var widths = new[] { 8, 30, 6, 4, 5, 5, 6 };
         sb.Append(TextFormatter.FormatTableHeader($"Aircraft Types — '{query}'",
-            ["ICAO", "Manufacturer", "Model", "Class", "Wake", "Weight"], widths));
+            ["Type", "Manufacturer/Model", "Eng", "Wt", "CWT", "SRS", "LAHSO"], widths));
 
         foreach (var ac in results)
         {
+            var mfrModel = $"{ac.Manufacturer} {ac.Model}";
             sb.AppendLine(TextFormatter.FormatTableRow(
-                [ac.IcaoId, Truncate(ac.Manufacturer, 18), Truncate(ac.Model, 22),
-                 ac.Class, ac.IcaoWakeTurbulenceCategory, ac.FaaWeightClass],
+                [ac.IcaoId, Truncate(mfrModel, 28), ac.FaaEngineNumberType, ac.FaaWeightClass,
+                 ac.ConsolidatedWakeTurbulenceCategory, ac.SameRunwaySeparationCategory,
+                 ac.LandAndHoldShortGroup],
                 widths));
         }
 
