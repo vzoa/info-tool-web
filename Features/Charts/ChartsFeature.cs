@@ -1,4 +1,4 @@
-﻿using Coravel.Scheduling.Schedule.Interfaces;
+using Coravel.Scheduling.Schedule.Interfaces;
 using ZoaReference.Features.Charts.ScheduledJobs;
 using ZoaReference.FeatureUtilities.Interfaces;
 using ZoaReference.Features.Charts.Services;
