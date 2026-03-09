@@ -254,24 +254,38 @@
 
         if (firstRender && AirportId is null)
         {
-            var savedStateTask = await ProtectedLocalStore.GetAsync<ChartState>(ChartStateSessionStorageKey);
-            if (savedStateTask is { Success: true, Value: not null })
+            try
             {
-                await UpdateCharts(savedStateTask.Value.AirportId);
-                _displayedChart = savedStateTask.Value.Chart;
-                _displayedChartPage = savedStateTask.Value.Page;
-                stateUpdated = true;
+                var savedStateTask = await ProtectedLocalStore.GetAsync<ChartState>(ChartStateSessionStorageKey);
+                if (savedStateTask is { Success: true, Value: not null })
+                {
+                    await UpdateCharts(savedStateTask.Value.AirportId);
+                    _displayedChart = savedStateTask.Value.Chart;
+                    _displayedChartPage = savedStateTask.Value.Page;
+                    stateUpdated = true;
+                }
+            }
+            catch
+            {
+                // Local storage data may be unreadable after an app update
             }
         }
 
         if (firstRender)
         {
-            var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
-            if (savedCustomAirportsTask is { Success: true, Value: not null })
+            try
             {
-                var customAirports = savedCustomAirportsTask.Value.Select(a => new Airport(a.Id, AirportType.Other, a.Guid));
-                _airports.AddRange(customAirports);
-                stateUpdated = true;
+                var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
+                if (savedCustomAirportsTask is { Success: true, Value: not null })
+                {
+                    var customAirports = savedCustomAirportsTask.Value.Select(a => new Airport(a.Id, AirportType.Other, a.Guid));
+                    _airports.AddRange(customAirports);
+                    stateUpdated = true;
+                }
+            }
+            catch
+            {
+                // Local storage data may be unreadable after an app update
             }
         }
 
