@@ -6,11 +6,14 @@ using ZoaReference.Features.VnasData.Services;
 
 namespace ZoaReference.Features.VnasData.ScheduledJobs;
 
-public class FetchAndCacheVnasData(ILogger<FetchAndCacheCharts> logger, CachedVnasDataService vnasDataService) : IInvocable
+public class FetchAndCacheVnasData(
+    ILogger<FetchAndCacheVnasData> logger, 
+    CachedVnasDataService vnasDataService,
+    IOptionsMonitor<AppSettings> appSettings) : IInvocable
 {
     public async Task Invoke()
     {
-        var artcc = appSettings.Value.ARTCC;
+        var artcc = appSettings.CurrentValue.ARTCC;
 
         // Use the dynamic value for logging and the service call
         logger.LogInformation("Fetching all VNAS Data for {Artcc}", artcc);
