@@ -4,6 +4,7 @@
 @implements IDisposable;
 
 @using Microsoft.Extensions.Options
+@inject Microsoft.Extensions.Options.IOptions<AppSettings> Settings
 @inject IOptions<AppSettings> Settings
 
 @inject DigitalAtisRepository AtisRepository;
@@ -40,7 +41,7 @@
 
 
 @code {
-    private readonly string[] _airports = { "KSFO", "KSJC", "KRNO", "KOAK", "KSMF" };
+    private IEnumerable<string> _airports => Settings.Value.ArtccAirports.AtisAirports;
     private List<Models.Atis>? _atisList;
 
     private static string GetIssueTimeString(Models.Atis atis)

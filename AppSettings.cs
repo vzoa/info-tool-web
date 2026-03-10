@@ -60,6 +60,9 @@ public class AppSettings
         public ICollection<string> Charlies { get; set; } = new List<string>();
         public ICollection<string> Deltas { get; set; } = new List<string>();
         public ICollection<string> Other { get; set; } = new List<string>();
+
+        public ICollection<string> AtisAirports { get; set; } = new List<string>();
+        
         public ICollection<string> All => Bravos.Concat(Charlies).Concat(Deltas).ToList();
     }
 }

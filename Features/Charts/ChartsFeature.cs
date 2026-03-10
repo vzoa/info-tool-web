@@ -10,6 +10,10 @@ public class ChartsFeature : IServiceConfigurator, ISchedulerConfigurator
     public IServiceCollection AddServices(IServiceCollection services)
     {
         services.AddSingleton<AviationApiChartService>();
+        services.AddSingleton<CifpService>();
+        services.AddSingleton<StarApproachConnectionService>();
+        services.AddSingleton<PdfRotationDetector>();
+        services.AddSingleton<ChartPdfProcessingService>();
         services.AddTransient<FetchAndCacheCharts>();
         return services;
     }
