@@ -6,6 +6,9 @@ public record CommandArgs(
     string[] Positional,
     Dictionary<string, string?> Flags)
 {
+    private const int MaxInputLength = 500;
+    private const int MaxTokenLength = 100;
+
     public static CommandArgs Parse(string rawInput)
     {
         var trimmed = rawInput.Trim();
@@ -14,7 +17,12 @@ public record CommandArgs(
             return new CommandArgs(rawInput, "", [], new Dictionary<string, string?>());
         }
 
-        var tokens = Tokenize(trimmed);
+        if (trimmed.Length > MaxInputLength)
+        {
+            trimmed = trimmed[..MaxInputLength];
+        }
+
+        var tokens = Tokenize(trimmed).Select(t => t.Length > MaxTokenLength ? t[..MaxTokenLength] : t).ToList();
         var commandName = tokens.Count > 0 ? tokens[0].ToLowerInvariant() : "";
         var positional = new List<string>();
         var flags = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);

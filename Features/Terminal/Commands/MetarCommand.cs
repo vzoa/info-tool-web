@@ -8,6 +8,8 @@ namespace ZoaReference.Features.Terminal.Commands;
 public class MetarCommand(IHttpClientFactory httpClientFactory) : ITerminalCommand
 {
     private const string MetarApiUrl = "https://aviationweather.gov/api/data/metar";
+    private const int MaxStations = 20;
+    private const int MaxStationIdLength = 5;
 
     public string Name => "metar";
     public string[] Aliases => [];
@@ -24,9 +26,20 @@ public class MetarCommand(IHttpClientFactory httpClientFactory) : ITerminalComma
             return CommandResult.FromError("Usage: metar <station...>");
         }
 
+        if (args.Positional.Length > MaxStations)
+        {
+            return CommandResult.FromError($"Too many stations (max {MaxStations}).");
+        }
+
         var stations = args.Positional
             .Select(NormalizeStation)
             .ToList();
+
+        var invalidStation = stations.FirstOrDefault(s => s.Length > MaxStationIdLength || !s.All(char.IsLetterOrDigit));
+        if (invalidStation is not null)
+        {
+            return CommandResult.FromError($"Invalid station identifier: '{invalidStation}'");
+        }
 
         List<MetarObservation> observations;
         try

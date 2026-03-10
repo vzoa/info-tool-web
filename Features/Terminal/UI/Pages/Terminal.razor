@@ -69,8 +69,8 @@
 
         if (result.Type == CommandResultType.OpenUrl && result.Url is not null)
         {
-            _viewerUrl = result.Url;
-            _needsDragInit = true;
+            _viewerUrl = IsAllowedViewerUrl(result.Url) ? result.Url : null;
+            _needsDragInit = _viewerUrl is not null;
             await InvokeAsync(StateHasChanged);
         }
         else if (result.Type == CommandResultType.CloseViewer)
@@ -92,6 +92,20 @@
     private void CloseViewer()
     {
         _viewerUrl = null;
+    }
+
+    /// <summary>
+    /// Validates that a viewer URL is safe: only relative paths (starting with /)
+    /// or absolute HTTPS URLs are allowed. This prevents javascript: / data: injection.
+    /// </summary>
+    private static bool IsAllowedViewerUrl(string url)
+    {
+        if (url.StartsWith('/'))
+        {
+            return true;
+        }
+        return Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
+               uri.Scheme == Uri.UriSchemeHttps;
     }
 
     public async ValueTask DisposeAsync()
