@@ -55,7 +55,7 @@ public class ChartPdfProcessingService(
                     if (rotation != 0)
                     {
                         importedPage.Rotate =
-                            (importedPage.Rotate - rotation + 360) % 360;
+                            (importedPage.Rotate + rotation + 360) % 360;
                     }
                 }
             }
