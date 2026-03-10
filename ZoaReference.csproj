@@ -27,6 +27,7 @@
     </ItemGroup>
 
     <Target Name="Tailwind" BeforeTargets="Build">
+        <MakeDir Directories="wwwroot/css" />
         <Exec Command="npm run css:build" />
     </Target>
 
