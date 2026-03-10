@@ -507,12 +507,19 @@
         
         try 
         {
-            _isDarkMode = await Js.InvokeAsync<bool>("eval", "window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches");
+            // Get the current hour from the user's browser
+            var currentHour = await Js.InvokeAsync<int>("eval", "new Date().getHours()");
+            
+            // Logic: Dark mode if hour is >= 20 (8 PM) OR < 6 (6 AM)
+            _isDarkMode = (currentHour >= 20 || currentHour < 6);
         }
         catch 
         {
-            // Fallback or ignore if JS fails
+            // Fallback: if JS fails, default to browser preference
+            _isDarkMode = await Js.InvokeAsync<bool>("eval", "window.matchMedia('(prefers-color-scheme: dark)').matches");
         }
+        
+        StateHasChanged();
     }
 
     protected override async Task OnInitializedAsync()
@@ -618,6 +625,12 @@
     private async Task UpdateDisplayedChart(Chart? chart)
     {
         if (chart is null) return;
+
+        if (_isAutoDarkMode)
+        {
+            await SyncAutoDarkMode();
+        }
+
         _displayedChart = chart;
         await ProtectedLocalStore.SetAsync(ChartStateSessionStorageKey, new ChartState(_airportId, _displayedChart));
     }
