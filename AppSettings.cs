@@ -5,6 +5,7 @@ namespace ZoaReference;
 public class AppSettings
 {
     public const string SectionKeyName = "AppSettings";
+    public string ARTCC { get; set; } = string.Empty;
     public int VatsimDataKeepForfHours { get; set; } = 24;
     public int VatsimDatafeedRefreshSeconds { get; set; } = 15;
     public int DigitalAtisRefreshSeoncds { get; set; } = 60;
