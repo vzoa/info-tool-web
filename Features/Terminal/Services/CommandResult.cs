@@ -4,6 +4,7 @@ public enum CommandResultType
 {
     Text,
     OpenUrl,
+    OpenTab,
     Error,
     CloseViewer
 }
@@ -23,4 +24,7 @@ public record CommandResult(string Text, CommandResultType Type = CommandResultT
 
     public static CommandResult FromUrl(string text, string url) =>
         new(text, CommandResultType.OpenUrl, url);
+
+    public static CommandResult FromTab(string text, string url) =>
+        new(text, CommandResultType.OpenTab, url);
 }

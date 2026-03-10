@@ -5,23 +5,20 @@ namespace ZoaReference.Features.Terminal.Commands;
 public class OpenCommand : ITerminalCommand
 {
     public string Name => "open";
-    public string[] Aliases => ["vis", "tdls", "strips"];
-    public string Summary => "Open external tools (vis, tdls, strips) in viewer";
-    public string Usage => "vis      — Open Airspace Visualizer\n" +
-                           "    tdls     — Open TDLS\n" +
-                           "    strips   — Open Flight Strips\n" +
+    public string[] Aliases => ["tdls", "strips"];
+    public string Summary => "Open external tools in a new tab";
+    public string Usage => "tdls     — Open TDLS in a new tab\n" +
+                           "    strips   — Open Flight Strips in a new tab\n" +
                            "    open <name>  — Open a tool by name";
 
-    private static readonly Dictionary<string, (string Label, string Path)> Tools = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, (string Label, string Url)> Tools = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["vis"] = ("Airspace Visualizer", "/airspaceviz"),
-        ["tdls"] = ("TDLS", "/tdls"),
-        ["strips"] = ("Flight Strips", "/strips"),
+        ["tdls"]   = ("TDLS",          "https://tdls.virtualnas.net"),
+        ["strips"] = ("Flight Strips", "https://strips.virtualnas.net"),
     };
 
     public Task<CommandResult> ExecuteAsync(CommandArgs args)
     {
-        // If invoked via alias (vis, tdls, strips), use the alias as the tool name
         var toolName = args.CommandName;
         if (toolName == "open" && args.Positional.Length > 0)
         {
@@ -31,7 +28,7 @@ public class OpenCommand : ITerminalCommand
         if (Tools.TryGetValue(toolName, out var tool))
         {
             var text = $"  Opening: {TextFormatter.Colorize(tool.Label, AnsiColor.Green)}";
-            return Task.FromResult(CommandResult.FromUrl(text, tool.Path));
+            return Task.FromResult(CommandResult.FromTab(text, tool.Url));
         }
 
         return Task.FromResult(CommandResult.FromError(

@@ -73,6 +73,10 @@
             _needsDragInit = _viewerUrl is not null;
             await InvokeAsync(StateHasChanged);
         }
+        else if (result.Type == CommandResultType.OpenTab && result.Url is not null)
+        {
+            await JS.InvokeVoidAsync("open", result.Url, "_blank");
+        }
         else if (result.Type == CommandResultType.CloseViewer)
         {
             _viewerUrl = null;
@@ -96,9 +100,10 @@
 
     /// <summary>
     /// Validates that a viewer URL is safe. Allowed:
-    ///   - Relative paths (starting with /) — always same-origin (charts API, internal tools)
+    ///   - Relative paths (starting with /) — same-origin: charts API (/api/v1/charts/...)
     ///   - https://oakartcc.org/... — ZOA procedure documents and custom documents
     /// Everything else (javascript:, data:, other domains) is rejected.
+    /// External tools (tdls, strips) open via OpenTab and bypass this check entirely.
     /// </summary>
     private static bool IsAllowedViewerUrl(string url)
     {
