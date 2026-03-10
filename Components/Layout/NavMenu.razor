@@ -38,22 +38,24 @@
             _module = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/navorder.js");
             var saved = await _module.InvokeAsync<string[]?>("loadOrder");
             
-            // Get the whitelist/order from AppSettings
-            var allowedKeys = Settings.Value.NavigationOrder;
+            // Priority 1: Config file. Priority 2: Hardcoded DefaultOrder in NavItems.cs
+            var allowedKeys = Settings.Value.NavigationOrder is { Count: > 0 } 
+                ? Settings.Value.NavigationOrder 
+                : NavItems.DefaultOrder;
 
             if (saved is { Length: > 0 })
             {
-                // Only use saved keys that exist in NavItems AND are allowed by config
+                // Only use saved keys that exist in NavItems AND are allowed by the current configuration
                 var validSaved = saved.Where(k => NavItems.All.ContainsKey(k) && allowedKeys.Contains(k)).ToList();
                 
-                // Add any keys from NavigationOrder that aren't in the saved list yet
+                // Ensure any newly added allowed keys appear even if they aren't in the browser's 'saved' list
                 var missing = allowedKeys.Where(k => !validSaved.Contains(k));
                 
                 _orderedKeys = validSaved.Concat(missing).ToList();
             }
             else
             {
-                // Fallback to the order defined in appsettings.json
+                // Fallback to the current effective allowed list
                 _orderedKeys = new List<string>(allowedKeys);
             }
 
@@ -76,9 +78,11 @@
     [JSInvokable]
     public void OnOrderChanged(string[] newOrder)
     {
-        var allowedKeys = Settings.Value.NavigationOrder;
+        var allowedKeys = Settings.Value.NavigationOrder is { Count: > 0 } 
+            ? Settings.Value.NavigationOrder 
+            : NavItems.DefaultOrder;
 
-        // Filter the new order to ensure hidden items don't reappear
+        // Strip out any keys that are no longer allowed (e.g. if the config changed)
         var valid = newOrder.Where(k => NavItems.All.ContainsKey(k) && allowedKeys.Contains(k)).ToList();
         var missing = allowedKeys.Where(k => !valid.Contains(k));
         
