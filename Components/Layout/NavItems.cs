@@ -19,14 +19,14 @@ public static class NavItems
 
     public static readonly List<string> DefaultOrder =
     [
+        "atis",
         "routes",
         "charts",
         "codes",
-        "procedures",
-        "airspaceviz",
-        "atis",
+        "positions",
         "videomaps",
+        "procedures",
         "scratchpads",
-        "positions"
+        "airspaceviz"
     ];
 }
