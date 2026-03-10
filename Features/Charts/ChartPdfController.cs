@@ -9,6 +9,11 @@ public class ChartPdfController(
     AviationApiChartService chartService,
     ChartPdfProcessingService pdfProcessingService) : ControllerBase
 {
+    /// <summary>
+    /// Returns a processed PDF for the given airport chart: pages are rotation-corrected and
+    /// merged into a single file. Falls back to a redirect to the raw FAA PDF if processing fails.
+    /// Supports ETag-based caching for efficient revalidation.
+    /// </summary>
     [HttpGet("{airportId}/{chartName}")]
     public async Task<IActionResult> GetProcessedPdf(
         string airportId,

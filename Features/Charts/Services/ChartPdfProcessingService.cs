@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Pdf.IO;
+using Sentry;
 using ZoaReference.Features.Charts.Models;
 
 namespace ZoaReference.Features.Charts.Services;
@@ -14,11 +15,15 @@ public class ChartPdfProcessingService(
     IOptionsMonitor<AppSettings> appSettings,
     PdfRotationDetector rotationDetector)
 {
+    /// <summary>
+    /// Downloads all pages of a chart PDF, detects and corrects rotation using text orientation,
+    /// merges multi-page charts into a single PDF, and caches the result.
+    /// </summary>
     public async Task<ProcessedChart?> GetProcessedPdf(
         Chart chart,
         CancellationToken ct = default)
     {
-        var cacheKey = $"ProcessedPdf:{chart.IcaoIdent}:{chart.ChartName}";
+        var cacheKey = $"ProcessedPdf:{chart.IcaoIdent}:{chart.ChartName}:{chart.ChartSeq}";
         if (cache.TryGetValue<ProcessedChart>(cacheKey, out var cached))
         {
             return cached;
@@ -71,6 +76,7 @@ public class ChartPdfProcessingService(
         }
         catch (Exception ex)
         {
+            SentrySdk.CaptureException(ex);
             logger.LogWarning(
                 ex,
                 "Failed to process PDF for chart {Chart} at {Airport}",
