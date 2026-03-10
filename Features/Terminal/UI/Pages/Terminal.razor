@@ -95,8 +95,10 @@
     }
 
     /// <summary>
-    /// Validates that a viewer URL is safe: only relative paths (starting with /)
-    /// or absolute HTTPS URLs are allowed. This prevents javascript: / data: injection.
+    /// Validates that a viewer URL is safe. Allowed:
+    ///   - Relative paths (starting with /) — always same-origin (charts API, internal tools)
+    ///   - https://oakartcc.org/... — ZOA procedure documents and custom documents
+    /// Everything else (javascript:, data:, other domains) is rejected.
     /// </summary>
     private static bool IsAllowedViewerUrl(string url)
     {
@@ -105,7 +107,8 @@
             return true;
         }
         return Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
-               uri.Scheme == Uri.UriSchemeHttps;
+               uri.Scheme == Uri.UriSchemeHttps &&
+               uri.Host.Equals("oakartcc.org", StringComparison.OrdinalIgnoreCase);
     }
 
     public async ValueTask DisposeAsync()
