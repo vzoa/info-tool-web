@@ -161,17 +161,13 @@
         @if (_displayedChart is not null)
         {
             <div class="h-full flex flex-col">
-                @if (_displayedChart.Pages.Count > 1)
-                {
-                    <div class="flex gap-2 items-center text-xs mb-3">
-                        @foreach (var chartPage in _displayedChart.Pages.OrderBy(p => p.PageNumber))
-                        {
-                            <button class="@MakePageButtonClass(chartPage)"
-                                    @onclick="() => UpdateDisplayedChartPage(chartPage)">@($"Pg. {chartPage.PageNumber}")</button>
-                        }
-                    </div>
-                }
-                <object class="pt-1 w-full grow" type="application/pdf" data="@(_displayedChartPage?.PdfPath + "#view=FitH")"></object>
+                <object class="pt-1 w-full grow" type="application/pdf"
+                        data="@(GetChartPdfUrl(_displayedChart) + "#view=FitH")">
+                    <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
+                       target="_blank" class="text-sky-400 underline">
+                        Open chart PDF directly
+                    </a>
+                </object>
             </div>
         }
     </div>
@@ -182,7 +178,6 @@
     private string _airportId = "";
 
     private Chart? _displayedChart;
-    private ChartPage? _displayedChartPage;
 
     private OrganizedCharts _organizedCharts = new() { Info = [], Sid = [], Star = [], Approach = [] };
     private readonly List<Airport> _airports = [];
@@ -428,7 +423,6 @@
             if (currentAirportIsCustom)
             {
                 _displayedChart = null;
-                _displayedChartPage = null;
                 _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
             }
 
@@ -445,7 +439,6 @@
             if (airport.Id == _airportId)
             {
                 _displayedChart = null;
-                _displayedChartPage = null;
                 _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
             }
 
@@ -493,7 +486,6 @@
             {
                 await UpdateCharts(savedStateTask.Value.AirportId);
                 _displayedChart = savedStateTask.Value.Chart;
-                _displayedChartPage = savedStateTask.Value.Page;
                 stateUpdated = true;
             }
         }
@@ -548,14 +540,11 @@
     {
         if (chart is null) return;
         _displayedChart = chart;
-        await UpdateDisplayedChartPage(chart.Pages.OrderBy(p => p.PageNumber).First());
+        await ProtectedLocalStore.SetAsync(ChartStateSessionStorageKey, new ChartState(_airportId, _displayedChart));
     }
 
-    private async Task UpdateDisplayedChartPage(ChartPage page)
-    {
-        _displayedChartPage = page;
-        await ProtectedLocalStore.SetAsync(ChartStateSessionStorageKey, new ChartState(_airportId, _displayedChart, _displayedChartPage));
-    }
+    private static string GetChartPdfUrl(Chart chart)
+        => $"/api/v1/charts/{Uri.EscapeDataString(chart.IcaoIdent)}/{Uri.EscapeDataString(chart.ChartName)}";
 
     private async Task ClearFilterInput(bool setFocus = true)
     {
@@ -586,13 +575,6 @@
         return string.Join(" ", baseClass, borderColor, isSelected);
     }
 
-    private string MakePageButtonClass(ChartPage page)
-    {
-        const string baseClass = "hover:bg-gray-700 border border-gray-600 p-1 m-1 cursor-pointer";
-        var isSelected = page.PdfPath == _displayedChartPage?.PdfPath ? "bg-gray-700 font-bold" : "";
-        return string.Join(" ", baseClass, isSelected);
-    }
-
     private enum AirportType
     {
         Bravo,
@@ -617,11 +599,10 @@
         return string.Join(" ", baseClass, textColor, isSelected);
     }
 
-    private class ChartState(string airportId, Chart? chart, ChartPage? page)
+    private class ChartState(string airportId, Chart? chart)
     {
         public string AirportId { get; } = airportId;
         public Chart? Chart { get; } = chart;
-        public ChartPage? Page { get; } = page;
     }
 
     private static int GetRankOrder(Chart chart)
