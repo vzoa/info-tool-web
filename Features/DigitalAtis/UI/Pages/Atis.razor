@@ -5,6 +5,8 @@
 
 @inject DigitalAtisRepository AtisRepository;
 
+@inject Microsoft.Extensions.Options.IOptions<AppSettings> Settings
+
 <PageTitle>ATIS - ZOA Reference</PageTitle>
 
 @if (_atisList is not null)
@@ -37,7 +39,7 @@
 
 
 @code {
-    private readonly string[] _airports = { "KSFO", "KSJC", "KRNO", "KOAK", "KSMF" };
+    private IEnumerable<string> _airports => Settings.Value.ArtccAirports.AtisAirports;
     private List<Models.Atis>? _atisList;
 
     private static string GetIssueTimeString(Models.Atis atis)
