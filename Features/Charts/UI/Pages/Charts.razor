@@ -65,34 +65,37 @@
                 <ValidationMessage For="() => _airportForm.AirportId"/>
             </EditForm>
         }
-
-        <div class="ml-auto flex items-center gap-3 text-xs text-gray-400 mr-2">
-            <label class="flex items-center gap-1 cursor-pointer select-none">
-                <input type="checkbox" checked="@_isDarkMode" @onchange="ToggleDarkMode" disabled="@_isAutoDarkMode" 
-                       class="accent-sky-500" />
-                Dark Mode
-            </label>
-            <label class="flex items-center gap-1 cursor-pointer select-none">
-                <input type="checkbox" checked="@_isAutoDarkMode" @onchange="ToggleAutoDarkMode" 
-                       class="accent-sky-500" />
-                Auto
-            </label>
-        </div>
     </div>
 </SectionContent>
 
 <div class="flex grow">
-    <div class="w-1/3">
-        <div class=@("flex items-center mb-2 ml-1" + (string.IsNullOrEmpty(_airportId) ? " collapse" : ""))>
-            <input @ref="@_filterInput" id="filterInput"
-                   class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-40"
-                   type="text" @bind="_filterInputText" @bind:event="oninput" placeholder="Filter by name"
-                   autocomplete="off"/>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                 class="stroke-gray-100 w-4 h-4 hover:stroke-red-500 transition-colors hover:cursor-pointer ml-1"
-                 @onclick="async () => await ClearFilterInput()">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
+    <div class="w-1/3 p-1">
+        @* NEW COMBINED ROW *@
+        <div class=@("flex items-center justify-between mb-2 " + (string.IsNullOrEmpty(_airportId) ? " collapse" : ""))>
+            <div class="flex items-center">
+                <input @ref="@_filterInput" id="filterInput"
+                       class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-40"
+                       type="text" @bind="_filterInputText" @bind:event="oninput" placeholder="Filter by name"
+                       autocomplete="off"/>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                     class="stroke-gray-100 w-4 h-4 hover:stroke-red-500 transition-colors hover:cursor-pointer ml-1"
+                     @onclick="async () => await ClearFilterInput()">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </div>
+
+            <div class="flex items-center gap-3 text-[10px] text-gray-400 mr-1">
+                <label class="flex items-center gap-1 cursor-pointer select-none">
+                    <input type="checkbox" checked="@_isDarkMode" @onchange="ToggleDarkMode" disabled="@_isAutoDarkMode" 
+                           class="accent-sky-500" />
+                    Dark
+                </label>
+                <label class="flex items-center gap-1 cursor-pointer select-none">
+                    <input type="checkbox" checked="@_isAutoDarkMode" @onchange="ToggleAutoDarkMode" 
+                           class="accent-sky-500" />
+                    Auto
+                </label>
+            </div>
         </div>
 
         <div class="flex flex-col justify-start items-start gap-y-4">
