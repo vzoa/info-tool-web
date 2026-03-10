@@ -16,6 +16,13 @@
 
 <PageTitle>Charts - @Settings.Value.ARTCC Reference</PageTitle>
 
+<style>
+    .chart-dark-filter {
+        filter: invert(93%) hue-rotate(180deg) brightness(1.1) contrast(0.9);
+        background-color: #0f172a;
+    }
+</style>
+
 <SectionContent SectionName="sub-nav">
     <div class="bg-slate-900 flex items-center gap-2 px-2 py-0.5 flex-wrap">
         @foreach (var airport in _airports)
@@ -58,6 +65,19 @@
                 <ValidationMessage For="() => _airportForm.AirportId"/>
             </EditForm>
         }
+
+        <div class="ml-auto flex items-center gap-3 text-xs text-gray-400 mr-2">
+            <label class="flex items-center gap-1 cursor-pointer select-none">
+                <input type="checkbox" checked="@_isDarkMode" @onchange="ToggleDarkMode" disabled="@_isAutoDarkMode" 
+                       class="accent-sky-500" />
+                Dark Mode
+            </label>
+            <label class="flex items-center gap-1 cursor-pointer select-none">
+                <input type="checkbox" checked="@_isAutoDarkMode" @onchange="ToggleAutoDarkMode" 
+                       class="accent-sky-500" />
+                Auto
+            </label>
+        </div>
     </div>
 </SectionContent>
 
@@ -164,7 +184,7 @@
         @if (_displayedChart is not null)
         {
             <div class="h-full flex flex-col">
-                <object class="pt-1 w-full grow" type="application/pdf"
+                <object class="pt-1 w-full grow @(_isDarkMode ? "chart-dark-filter" : "")" type="application/pdf"
                         data="@(GetChartPdfUrl(_displayedChart) + "#view=FitH")">
                     <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
                        target="_blank" class="text-sky-400 underline">
@@ -198,6 +218,8 @@
 
     private const string CustomAirportsSessionStorageKey = "customAirports";
     private const string ChartStateSessionStorageKey = "chartState";
+    private const string DarkModeSessionStorageKey = "darkMode";
+    private const string AutoDarkModeSessionStorageKey = "autoDarkMode";
 
     private ElementReference _filterInput;
     private string _filterInputText = "";
@@ -210,6 +232,9 @@
     private bool _fixFilterActive;
     private CancellationTokenSource? _starFixDebounce;
     private List<string> _starFixSuggestions = [];
+
+    private bool _isDarkMode;
+    private bool _isAutoDarkMode;
 
     private OrganizedCharts FilteredCharts
     {
@@ -454,6 +479,36 @@
         }
     }
 
+    private async Task ToggleDarkMode(ChangeEventArgs e)
+    {
+        _isDarkMode = (bool)(e.Value ?? false);
+        await ProtectedLocalStore.SetAsync(DarkModeSessionStorageKey, _isDarkMode);
+    }
+
+    private async Task ToggleAutoDarkMode(ChangeEventArgs e)
+    {
+        _isAutoDarkMode = (bool)(e.Value ?? false);
+        await ProtectedLocalStore.SetAsync(AutoDarkModeSessionStorageKey, _isAutoDarkMode);
+        if (_isAutoDarkMode)
+        {
+            await SyncAutoDarkMode();
+        }
+    }
+
+    private async Task SyncAutoDarkMode()
+    {
+        if (!_isAutoDarkMode) return;
+        
+        try 
+        {
+            _isDarkMode = await Js.InvokeAsync<bool>("eval", "window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches");
+        }
+        catch 
+        {
+            // Fallback or ignore if JS fails
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _airportId = AirportId ?? string.Empty;
@@ -482,17 +537,6 @@
     {
         var stateUpdated = false;
 
-        if (firstRender && AirportId is null)
-        {
-            var savedStateTask = await ProtectedLocalStore.GetAsync<ChartState>(ChartStateSessionStorageKey);
-            if (savedStateTask is { Success: true, Value: not null })
-            {
-                await UpdateCharts(savedStateTask.Value.AirportId);
-                _displayedChart = savedStateTask.Value.Chart;
-                stateUpdated = true;
-            }
-        }
-
         if (firstRender)
         {
             var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
@@ -501,6 +545,32 @@
                 var customAirports = savedCustomAirportsTask.Value.Select(a => new Airport(a.Id, AirportType.Other, a.Guid));
                 _airports.AddRange(customAirports);
                 stateUpdated = true;
+            }
+
+            var darkModeTask = await ProtectedLocalStore.GetAsync<bool>(DarkModeSessionStorageKey);
+            if (darkModeTask.Success)
+            {
+                _isDarkMode = darkModeTask.Value;
+                stateUpdated = true;
+            }
+
+            var autoDarkModeTask = await ProtectedLocalStore.GetAsync<bool>(AutoDarkModeSessionStorageKey);
+            if (autoDarkModeTask.Success)
+            {
+                _isAutoDarkMode = autoDarkModeTask.Value;
+                if (_isAutoDarkMode) await SyncAutoDarkMode();
+                stateUpdated = true;
+            }
+
+            if (AirportId is null)
+            {
+                var savedStateTask = await ProtectedLocalStore.GetAsync<ChartState>(ChartStateSessionStorageKey);
+                if (savedStateTask is { Success: true, Value: not null })
+                {
+                    await UpdateCharts(savedStateTask.Value.AirportId);
+                    _displayedChart = savedStateTask.Value.Chart;
+                    stateUpdated = true;
+                }
             }
         }
 
@@ -557,7 +627,6 @@
             await Js.InvokeVoidAsync("SetFocusToId", "filterInput");
         }
     }
-
 
     private string MakeChartButtonClass(Chart chart)
     {
@@ -665,5 +734,4 @@
     }
 
     private record struct SavedAirport(string Id, Guid Guid);
-
 }
