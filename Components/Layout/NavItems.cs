@@ -11,7 +11,7 @@ public static class NavItems
         ["charts"] = new("/charts", "Charts"),
         ["codes"] = new("/codes", "ICAO Search"),
         ["positions"] = new("/positions", "Positions"),
-        ["videomaps"] = new("/videomaps", "STARS Video Maps"),
+        ["videomaps"] = new("/videomaps", "Video Maps"),
         ["procedures"] = new("/procedures", "Procedures"),
         ["scratchpads"] = new("/scratchpads", "Scratchpads"),
         ["airspaceviz"] = new("/airspaceviz", "Airspace"),
