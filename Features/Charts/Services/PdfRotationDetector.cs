@@ -1,8 +1,11 @@
 using UglyToad.PdfPig;
-using UglyToad.PdfPig.Content;
 
 namespace ZoaReference.Features.Charts.Services;
 
+/// <summary>
+/// Detects PDF text rotation by analyzing baseline angles of individual letters,
+/// matching the CLI's atan2-based transformation matrix approach.
+/// </summary>
 public class PdfRotationDetector
 {
     public int DetectRotation(byte[] pdfBytes)
@@ -12,7 +15,7 @@ public class PdfRotationDetector
             using var stream = new MemoryStream(pdfBytes);
             using var document = PdfDocument.Open(stream);
 
-            var orientationCounts = new Dictionary<TextOrientation, int>();
+            var angleCounts = new Dictionary<int, int>();
 
             foreach (var page in document.GetPages())
             {
@@ -23,32 +26,60 @@ public class PdfRotationDetector
                         continue;
                     }
 
-                    orientationCounts.TryGetValue(letter.TextOrientation, out var count);
-                    orientationCounts[letter.TextOrientation] = count + 1;
+                    var dx = letter.EndBaseLine.X - letter.StartBaseLine.X;
+                    var dy = letter.EndBaseLine.Y - letter.StartBaseLine.Y;
+
+                    if (Math.Abs(dx) < 0.001 && Math.Abs(dy) < 0.001)
+                    {
+                        continue;
+                    }
+
+                    var rawAngle = Math.Atan2(dy, dx) * 180.0 / Math.PI;
+                    var rounded = (int)(Math.Round(rawAngle / 10.0) * 10);
+                    angleCounts.TryGetValue(rounded, out var count);
+                    angleCounts[rounded] = count + 1;
                 }
             }
 
-            if (orientationCounts.Count == 0)
+            if (angleCounts.Count == 0)
             {
                 return 0;
             }
 
-            var dominant = orientationCounts
-                .OrderByDescending(kv => kv.Value)
-                .First()
-                .Key;
+            var upright = CountBucket(angleCounts, [-10, 0, 10]);
+            var rotated90 = CountBucket(angleCounts, [80, 90, 100]);
+            var rotatedNeg90 = CountBucket(angleCounts, [-80, -90, -100]);
 
-            return dominant switch
+            if (rotated90 > upright && rotated90 >= rotatedNeg90)
             {
-                TextOrientation.Rotate90 => 90,
-                TextOrientation.Rotate270 => -90,
-                TextOrientation.Rotate180 => 180,
-                _ => 0
-            };
+                return 90;
+            }
+
+            if (rotatedNeg90 > upright && rotatedNeg90 > rotated90)
+            {
+                return -90;
+            }
+
+            return 0;
         }
         catch (Exception)
         {
             return 0;
         }
+    }
+
+    private static int CountBucket(
+        Dictionary<int, int> counts, int[] angles)
+    {
+        var total = 0;
+        foreach (var angle in angles)
+        {
+            if (counts.TryGetValue(angle, out var count))
+            {
+                total += count;
+            }
+        }
+
+        return total;
     }
 }
