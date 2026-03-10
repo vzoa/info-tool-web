@@ -1,5 +1,7 @@
 @rendermode InteractiveServer
 @implements IAsyncDisposable
+@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
 @inject IJSRuntime Js
 
 <div class="bg-slate-950 shadow-lg sticky left-0 top-0 z-40 flex items-center text-gray-400 border-b border-slate-700">
@@ -22,7 +24,7 @@
 </div>
 
 @code {
-    private List<string> _orderedKeys = new(NavItems.DefaultOrder);
+    private List<string> _orderedKeys = new();
     private bool _reorderMode;
     private ElementReference _ulRef;
     private IJSObjectReference? _module;
@@ -35,14 +37,27 @@
         {
             _module = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/navorder.js");
             var saved = await _module.InvokeAsync<string[]?>("loadOrder");
+            
+            // Get the whitelist/order from AppSettings
+            var allowedKeys = Settings.Value.NavigationOrder;
+
             if (saved is { Length: > 0 })
             {
-                // Only use saved keys that still exist, then append any new ones
-                var validSaved = saved.Where(k => NavItems.All.ContainsKey(k)).ToList();
-                var missing = NavItems.DefaultOrder.Where(k => !validSaved.Contains(k));
+                // Only use saved keys that exist in NavItems AND are allowed by config
+                var validSaved = saved.Where(k => NavItems.All.ContainsKey(k) && allowedKeys.Contains(k)).ToList();
+                
+                // Add any keys from NavigationOrder that aren't in the saved list yet
+                var missing = allowedKeys.Where(k => !validSaved.Contains(k));
+                
                 _orderedKeys = validSaved.Concat(missing).ToList();
-                StateHasChanged();
             }
+            else
+            {
+                // Fallback to the order defined in appsettings.json
+                _orderedKeys = new List<string>(allowedKeys);
+            }
+
+            StateHasChanged();
 
             _dotnetRef = DotNetObjectReference.Create(this);
             _dragHandle = await _module.InvokeAsync<IJSObjectReference>("enableDragDrop", _ulRef, _dotnetRef);
@@ -61,8 +76,12 @@
     [JSInvokable]
     public void OnOrderChanged(string[] newOrder)
     {
-        var valid = newOrder.Where(k => NavItems.All.ContainsKey(k)).ToList();
-        var missing = NavItems.DefaultOrder.Where(k => !valid.Contains(k));
+        var allowedKeys = Settings.Value.NavigationOrder;
+
+        // Filter the new order to ensure hidden items don't reappear
+        var valid = newOrder.Where(k => NavItems.All.ContainsKey(k) && allowedKeys.Contains(k)).ToList();
+        var missing = allowedKeys.Where(k => !valid.Contains(k));
+        
         _orderedKeys = valid.Concat(missing).ToList();
         InvokeAsync(StateHasChanged);
     }

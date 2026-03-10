@@ -16,6 +16,8 @@ public class AppSettings
     public string ReferenceBindersDirectoryInWwwroot { get; set; } = string.Empty;
     public string DocumentsPdfPath { get; set; } = string.Empty;
 
+    public List<string> NavigationOrder { get; set; } = new();
+
     public List<CustomDocumentCategory> CustomDocuments { get; set; } = [];
 
 
