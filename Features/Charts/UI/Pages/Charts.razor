@@ -70,11 +70,13 @@
 
 <div class="flex grow">
     <div class="w-1/3 p-1">
-        @* NEW COMBINED ROW *@
-        <div class=@("flex items-center justify-between mb-2 " + (string.IsNullOrEmpty(_airportId) ? " collapse" : ""))>
-            <div class="flex items-center">
+        @* COMBINED ROW - SINGLE FLEX CONTAINER TO PREVENT WRAPPING *@
+        <div class=@("flex items-center gap-2 mb-2 " + (string.IsNullOrEmpty(_airportId) ? " collapse" : ""))>
+            
+            @* Filter Input & Clear Button *@
+            <div class="flex items-center shrink">
                 <input @ref="@_filterInput" id="filterInput"
-                       class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-40"
+                       class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-32"
                        type="text" @bind="_filterInputText" @bind:event="oninput" placeholder="Filter by name"
                        autocomplete="off"/>
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
@@ -84,13 +86,14 @@
                 </svg>
             </div>
 
-            <div class="flex items-center gap-3 text-[10px] text-gray-400 mr-1">
-                <label class="flex items-center gap-1 cursor-pointer select-none">
+            @* Toggles - No wrapping allowed *@
+            <div class="flex items-center gap-2 text-[10px] text-gray-400 flex-nowrap shrink-0">
+                <label class="flex items-center gap-0.5 cursor-pointer select-none whitespace-nowrap">
                     <input type="checkbox" checked="@_isDarkMode" @onchange="ToggleDarkMode" disabled="@_isAutoDarkMode" 
                            class="accent-sky-500" />
                     Dark
                 </label>
-                <label class="flex items-center gap-1 cursor-pointer select-none">
+                <label class="flex items-center gap-0.5 cursor-pointer select-none whitespace-nowrap">
                     <input type="checkbox" checked="@_isAutoDarkMode" @onchange="ToggleAutoDarkMode" 
                            class="accent-sky-500" />
                     Auto
