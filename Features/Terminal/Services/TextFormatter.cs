@@ -10,7 +10,8 @@ public enum AnsiColor
     Cyan,
     Green,
     Yellow,
-    Gray
+    Gray,
+    Magenta
 }
 
 public static class TextFormatter
@@ -24,6 +25,7 @@ public static class TextFormatter
         AnsiColor.Green => "\x1b[32m",
         AnsiColor.Yellow => "\x1b[33m",
         AnsiColor.Gray => "\x1b[90m",
+        AnsiColor.Magenta => "\x1b[35m",
         _ => ""
     };
 
