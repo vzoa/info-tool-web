@@ -1,0 +1,146 @@
+@page "/terminal"
+@rendermode InteractiveServer
+@using Microsoft.Extensions.Options
+@using ZoaReference.Features.Terminal.Services
+@implements IAsyncDisposable
+
+@inject CommandDispatcher Dispatcher
+@inject IJSRuntime JS
+@inject IOptions<AppSettings> AppSettingsOptions
+
+<PageTitle>Terminal - ZOA Reference</PageTitle>
+
+<div @ref="_splitContainer" class="flex flex-col lg:flex-row h-[calc(100vh-4rem)] p-2">
+    <div @ref="_terminalContainer" class="min-w-0 rounded bg-black overflow-hidden"
+         style="@(_viewerUrl is null ? "flex: 1 1 100%;" : "flex: 0 0 55%; min-height: 200px; min-width: 300px;")">
+    </div>
+
+    @if (_viewerUrl is not null)
+    {
+        <div @ref="_dragHandle"
+             class="hidden lg:flex items-center justify-center cursor-col-resize select-none shrink-0 group"
+             style="width: 10px;">
+            <div class="w-1 h-10 rounded bg-slate-600 group-hover:bg-slate-400 transition-colors"></div>
+        </div>
+
+        <div class="flex flex-col rounded bg-slate-900 overflow-hidden"
+             style="flex: 1 1 0%; min-height: 200px; min-width: 200px;">
+            <div class="flex items-center justify-between px-3 py-1 bg-slate-700 text-xs">
+                <span class="text-gray-400 truncate">@_viewerUrl</span>
+                <button class="text-gray-400 hover:text-white ml-2 shrink-0" @onclick="CloseViewer">✕</button>
+            </div>
+            <iframe src="@_viewerUrl" class="flex-1 w-full border-0"
+                    @ref="_viewerFrame"></iframe>
+        </div>
+    }
+</div>
+
+@code {
+    private ElementReference _terminalContainer;
+    private ElementReference _viewerFrame;
+    private ElementReference _splitContainer;
+    private ElementReference _dragHandle;
+    private IJSObjectReference? _module;
+    private DotNetObjectReference<Terminal>? _dotnetRef;
+    private string? _viewerUrl;
+    private bool _needsDragInit;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotnetRef = DotNetObjectReference.Create(this);
+            _module = await JS.InvokeAsync<IJSObjectReference>(
+                "import", "/scripts/terminal.js?v=3");
+            await _module.InvokeVoidAsync("initialize", _terminalContainer, _dotnetRef);
+            return;
+        }
+
+        if (_needsDragInit && _module is not null && _viewerUrl is not null)
+        {
+            _needsDragInit = false;
+            await _module.InvokeVoidAsync(
+                "initDragHandle", _splitContainer, _dragHandle, _terminalContainer);
+        }
+    }
+
+    [JSInvokable]
+    public async Task<string> ProcessCommand(string input)
+    {
+        var result = await Dispatcher.DispatchAsync(input);
+
+        if (result.Type == CommandResultType.OpenUrl && result.Url is not null)
+        {
+            _viewerUrl = IsAllowedViewerUrl(result.Url) ? result.Url : null;
+            _needsDragInit = _viewerUrl is not null;
+            await InvokeAsync(StateHasChanged);
+        }
+        else if (result.Type == CommandResultType.OpenTab && result.Url is not null)
+        {
+            await JS.InvokeVoidAsync("open", result.Url, "_blank");
+        }
+        else if (result.Type == CommandResultType.CloseViewer)
+        {
+            _viewerUrl = null;
+            await InvokeAsync(StateHasChanged);
+        }
+
+        return result.Text;
+    }
+
+    [JSInvokable]
+    public Task<string[]> GetCompletions(string partial)
+    {
+        if (partial.Length > 200) partial = partial[..200];
+        var completions = Dispatcher.GetCompletions(partial).ToArray();
+        return Task.FromResult(completions);
+    }
+
+    private void CloseViewer()
+    {
+        _viewerUrl = null;
+    }
+
+    /// <summary>
+    /// Validates that a viewer URL is safe. Allowed:
+    ///   - Relative paths (starting with /) — same-origin: charts API (/api/v1/charts/...)
+    ///   - https URLs whose host matches or is a subdomain of an entry in AllowedViewerHosts
+    /// Everything else (javascript:, data:, other domains) is rejected.
+    /// External tools (tdls, strips) open via OpenTab and bypass this check entirely.
+    /// </summary>
+    private bool IsAllowedViewerUrl(string url)
+    {
+        if (url.StartsWith('/'))
+        {
+            return true;
+        }
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+        {
+            return false;
+        }
+
+        var allowedHosts = AppSettingsOptions.Value.AllowedViewerHosts;
+        return allowedHosts.Any(allowed =>
+            uri.Host.Equals(allowed, StringComparison.OrdinalIgnoreCase) ||
+            uri.Host.EndsWith("." + allowed, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_module is not null)
+            {
+                await _module.InvokeVoidAsync("dispose");
+                await _module.DisposeAsync();
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit already closed
+        }
+
+        _dotnetRef?.Dispose();
+    }
+}

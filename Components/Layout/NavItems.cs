@@ -15,6 +15,7 @@ public static class NavItems
         ["procedures"] = new("/procedures", "Procedures"),
         ["scratchpads"] = new("/scratchpads", "Scratchpads"),
         ["airspaceviz"] = new("/airspaceviz", "Airspace"),
+        ["terminal"] = new("/terminal", "Terminal"),
     };
 
     public static readonly List<string> DefaultOrder =
@@ -27,6 +28,7 @@ public static class NavItems
         "videomaps",
         "procedures",
         "scratchpads",
-        "airspaceviz"
+        "airspaceviz",
+        "terminal"
     ];
 }
