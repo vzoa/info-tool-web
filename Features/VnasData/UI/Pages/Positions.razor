@@ -7,7 +7,7 @@
 @inject IJSRuntime Js
 
 @using Microsoft.Extensions.Options
-@inject IOptions<AppSettings> Settings
+@inject IOptionsMonitor<AppSettings> Settings
 
 <PageTitle>Positions - @Settings.Value.ARTCC Reference</PageTitle>
 
@@ -44,7 +44,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var artcc = Settings.Value.ARTCC;
+        var artcc = Settings.CurrentValue.ARTCC;
         var fetchedFacilities = await VnasData.GetArtccFacilities(artcc);
         
         var tcps = fetchedFacilities
