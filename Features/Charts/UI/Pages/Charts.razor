@@ -16,6 +16,13 @@
 
 <PageTitle>Charts - @Settings.Value.ARTCC Reference</PageTitle>
 
+<style>
+    .chart-dark-filter {
+        filter: invert(93%) hue-rotate(180deg) brightness(1.1) contrast(0.9);
+        background-color: #0f172a;
+    }
+</style>
+
 <SectionContent SectionName="sub-nav">
     <div class="bg-slate-900 flex items-center gap-2 px-2 py-0.5 flex-wrap">
         @foreach (var airport in _airports)
@@ -62,17 +69,27 @@
 </SectionContent>
 
 <div class="flex grow">
-    <div class="w-1/3">
-        <div class=@("flex items-center mb-2 ml-1" + (string.IsNullOrEmpty(_airportId) ? " collapse" : ""))>
+    <div class="w-1/3 p-1">
+        <div class=@("flex items-center gap-2 mb-2 ml-1" + (string.IsNullOrEmpty(_airportId) ? " collapse" : ""))>
             <input @ref="@_filterInput" id="filterInput"
                    class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-40"
                    type="text" @bind="_filterInputText" @bind:event="oninput" placeholder="Filter by name"
                    autocomplete="off"/>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                 class="stroke-gray-100 w-4 h-4 hover:stroke-red-500 transition-colors hover:cursor-pointer ml-1"
+                 class="stroke-gray-100 w-4 h-4 hover:stroke-red-500 transition-colors hover:cursor-pointer"
                  @onclick="async () => await ClearFilterInput()">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
             </svg>
+            <label class="flex items-center gap-0.5 cursor-pointer select-none whitespace-nowrap text-[10px] text-gray-400">
+                <input type="checkbox" checked="@_isDarkMode" @onchange="ToggleDarkMode" disabled="@_isAutoDarkMode"
+                       class="accent-sky-500" />
+                Dark Mode
+            </label>
+            <label class="flex items-center gap-0.5 cursor-pointer select-none whitespace-nowrap text-[10px] text-gray-400">
+                <input type="checkbox" checked="@_isAutoDarkMode" @onchange="ToggleAutoDarkMode"
+                       class="accent-sky-500" />
+                Auto Dark Mode
+            </label>
         </div>
 
         <div class="flex flex-col justify-start items-start gap-y-4">
@@ -164,7 +181,7 @@
         @if (_displayedChart is not null)
         {
             <div class="h-full flex flex-col">
-                <object class="pt-1 w-full grow" type="application/pdf"
+                <object class="pt-1 w-full grow @(_isDarkMode ? "chart-dark-filter" : "")" type="application/pdf"
                         data="@(GetChartPdfUrl(_displayedChart) + "#view=FitH")">
                     <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
                        target="_blank" class="text-sky-400 underline">
@@ -198,6 +215,8 @@
 
     private const string CustomAirportsSessionStorageKey = "customAirports";
     private const string ChartStateSessionStorageKey = "chartState";
+    private const string DarkModeSessionStorageKey = "darkMode";
+    private const string AutoDarkModeSessionStorageKey = "autoDarkMode";
 
     private ElementReference _filterInput;
     private string _filterInputText = "";
@@ -210,6 +229,9 @@
     private bool _fixFilterActive;
     private CancellationTokenSource? _starFixDebounce;
     private List<string> _starFixSuggestions = [];
+
+    private bool _isDarkMode;
+    private bool _isAutoDarkMode;
 
     private OrganizedCharts FilteredCharts
     {
@@ -454,6 +476,43 @@
         }
     }
 
+    private async Task ToggleDarkMode(ChangeEventArgs e)
+    {
+        _isDarkMode = (bool)(e.Value ?? false);
+        await ProtectedLocalStore.SetAsync(DarkModeSessionStorageKey, _isDarkMode);
+    }
+
+    private async Task ToggleAutoDarkMode(ChangeEventArgs e)
+    {
+        _isAutoDarkMode = (bool)(e.Value ?? false);
+        await ProtectedLocalStore.SetAsync(AutoDarkModeSessionStorageKey, _isAutoDarkMode);
+        if (_isAutoDarkMode)
+        {
+            await SyncAutoDarkMode();
+        }
+    }
+
+    private async Task SyncAutoDarkMode()
+    {
+        if (!_isAutoDarkMode) return;
+        
+        try 
+        {
+            // Get the current hour from the user's browser
+            var currentHour = await Js.InvokeAsync<int>("eval", "new Date().getHours()");
+            
+            // Logic: Dark mode if hour is >= 20 (8 PM) OR < 6 (6 AM)
+            _isDarkMode = (currentHour >= 20 || currentHour < 6);
+        }
+        catch 
+        {
+            // Fallback: if JS fails, default to browser preference
+            _isDarkMode = await Js.InvokeAsync<bool>("eval", "window.matchMedia('(prefers-color-scheme: dark)').matches");
+        }
+        
+        StateHasChanged();
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _airportId = AirportId ?? string.Empty;
@@ -482,17 +541,6 @@
     {
         var stateUpdated = false;
 
-        if (firstRender && AirportId is null)
-        {
-            var savedStateTask = await ProtectedLocalStore.GetAsync<ChartState>(ChartStateSessionStorageKey);
-            if (savedStateTask is { Success: true, Value: not null })
-            {
-                await UpdateCharts(savedStateTask.Value.AirportId);
-                _displayedChart = savedStateTask.Value.Chart;
-                stateUpdated = true;
-            }
-        }
-
         if (firstRender)
         {
             var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
@@ -501,6 +549,32 @@
                 var customAirports = savedCustomAirportsTask.Value.Select(a => new Airport(a.Id, AirportType.Other, a.Guid));
                 _airports.AddRange(customAirports);
                 stateUpdated = true;
+            }
+
+            var darkModeTask = await ProtectedLocalStore.GetAsync<bool>(DarkModeSessionStorageKey);
+            if (darkModeTask.Success)
+            {
+                _isDarkMode = darkModeTask.Value;
+                stateUpdated = true;
+            }
+
+            var autoDarkModeTask = await ProtectedLocalStore.GetAsync<bool>(AutoDarkModeSessionStorageKey);
+            if (autoDarkModeTask.Success)
+            {
+                _isAutoDarkMode = autoDarkModeTask.Value;
+                if (_isAutoDarkMode) await SyncAutoDarkMode();
+                stateUpdated = true;
+            }
+
+            if (AirportId is null)
+            {
+                var savedStateTask = await ProtectedLocalStore.GetAsync<ChartState>(ChartStateSessionStorageKey);
+                if (savedStateTask is { Success: true, Value: not null })
+                {
+                    await UpdateCharts(savedStateTask.Value.AirportId);
+                    _displayedChart = savedStateTask.Value.Chart;
+                    stateUpdated = true;
+                }
             }
         }
 
@@ -542,6 +616,12 @@
     private async Task UpdateDisplayedChart(Chart? chart)
     {
         if (chart is null) return;
+
+        if (_isAutoDarkMode)
+        {
+            await SyncAutoDarkMode();
+        }
+
         _displayedChart = chart;
         await ProtectedLocalStore.SetAsync(ChartStateSessionStorageKey, new ChartState(_airportId, _displayedChart));
     }
@@ -557,7 +637,6 @@
             await Js.InvokeVoidAsync("SetFocusToId", "filterInput");
         }
     }
-
 
     private string MakeChartButtonClass(Chart chart)
     {
@@ -665,5 +744,4 @@
     }
 
     private record struct SavedAirport(string Id, Guid Guid);
-
 }
