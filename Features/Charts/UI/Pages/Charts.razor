@@ -18,8 +18,15 @@
 
 <style>
     .chart-dark-filter {
-        filter: invert(93%) hue-rotate(180deg) brightness(1.1) contrast(0.9);
-        background-color: #0f172a;
+        filter: invert(1) hue-rotate(180deg) brightness(1.05) contrast(0.95);
+    }
+
+    .pdf-wrapper-dark {
+        background-color: #020617 !important;
+    }
+
+    .pdf-wrapper-dark object {
+        background: transparent !important;
     }
 </style>
 
@@ -82,12 +89,12 @@
             </svg>
             <label class="flex items-center gap-0.5 cursor-pointer select-none whitespace-nowrap text-[10px] text-gray-400">
                 <input type="checkbox" checked="@_isDarkMode" @onchange="ToggleDarkMode" disabled="@_isAutoDarkMode"
-                       class="accent-sky-500" />
+                       class="accent-sky-500"/>
                 Dark Mode
             </label>
             <label class="flex items-center gap-0.5 cursor-pointer select-none whitespace-nowrap text-[10px] text-gray-400">
                 <input type="checkbox" checked="@_isAutoDarkMode" @onchange="ToggleAutoDarkMode"
-                       class="accent-sky-500" />
+                       class="accent-sky-500"/>
                 Auto Dark Mode
             </label>
         </div>
@@ -101,56 +108,9 @@
                         @foreach (var chart in charts)
                         {
                             <button class="@MakeChartButtonClass(chart)"
-                                    @onclick="() => UpdateDisplayedChart(chart)">@chart.ChartName</button>
-                        }
-                    </div>
-                }
-            }
-
-            @if (FilteredCharts.Approach.Count > 0 || _connectedChartNames is not null)
-            {
-                <div class=@("flex items-center ml-1" + (string.IsNullOrEmpty(_airportId) ? " collapse" : ""))>
-                    <input id="starFixInput" list="starFixSuggestions"
-                           class="uppercase placeholder:normal-case bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-40"
-                           type="text" @bind="_starFixInputText" @bind:event="oninput"
-                           @bind:after="OnStarFixInputChanged"
-                           placeholder="Connecting STAR/fix"
-                           @onkeydown="OnStarFixKeyDown"/>
-                    <datalist id="starFixSuggestions">
-                        @foreach (var suggestion in _starFixSuggestions)
-                        {
-                            <option value="@suggestion"/>
-                        }
-                    </datalist>
-                    @if (_cifpLoading)
-                    {
-                        <span class="text-xs text-gray-400 ml-1 animate-pulse">...</span>
-                    }
-                    else
-                    {
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                             class="stroke-gray-100 w-4 h-4 hover:stroke-red-500 transition-colors hover:cursor-pointer ml-1"
-                             @onclick="ClearStarFixInput">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    }
-                </div>
-                @if (_starAnalysis is not null)
-                {
-                    <div class="ml-1 text-gray-400" style="font-size: 10px;">
-                        @_starAnalysis.Identifier: @string.Join(", ", _starAnalysis.Waypoints)
-                    </div>
-                }
-                else if (_fixFilterActive && _activeConnections is not null && !_cifpLoading)
-                {
-                    <div class="ml-1 text-gray-400" style="font-size: 10px;">
-                        @if (_activeConnections.Count > 0)
-                        {
-                            @($"{_activeConnections.Count} approach{(_activeConnections.Count != 1 ? "es" : "")} via {_starFixInputText.ToUpperInvariant()}")
-                        }
-                        else
-                        {
-                            @("No approaches found")
+                                    @onclick="() => UpdateDisplayedChart(chart)">
+                                @chart.ChartName
+                            </button>
                         }
                     </div>
                 }
@@ -181,13 +141,21 @@
         @if (_displayedChart is not null)
         {
             <div class="h-full flex flex-col">
-                <object class="pt-1 w-full grow @(_isDarkMode ? "chart-dark-filter" : "")" type="application/pdf"
-                        data="@(GetChartPdfUrl(_displayedChart) + "#view=FitH")">
-                    <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
-                       target="_blank" class="text-sky-400 underline">
-                        Open chart PDF directly
-                    </a>
-                </object>
+                <div class="pdf-wrapper pt-1 w-full grow @(_isDarkMode ? "pdf-wrapper-dark chart-dark-filter" : "")">
+
+                    <object class="w-full h-full"
+                            type="application/pdf"
+                            data="@(GetChartPdfUrl(_displayedChart) + "#view=FitH")">
+
+                        <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
+                           target="_blank"
+                           class="text-sky-400 underline">
+                            Open chart PDF directly
+                        </a>
+
+                    </object>
+
+                </div>
             </div>
         }
     </div>
