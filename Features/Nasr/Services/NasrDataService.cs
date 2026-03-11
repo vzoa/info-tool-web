@@ -53,6 +53,35 @@ public class NasrDataService(
             .ToList();
     }
 
+    public async Task<NavaidInfo?> GetNavaidById(string id, CancellationToken ct = default)
+    {
+        var navaids = await GetNavaids(ct);
+        return navaids.FirstOrDefault(n => n.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Finds a navaid whose station name starts with the given word (as stored in NASR AWY records).
+    /// NASR AWY fix names are the first space-delimited word of the navaid's station name,
+    /// e.g. "WENATCHEE" for EAT, "KLAMATH" for LMT (KLAMATH FALLS), "MISSION" for MZB (MISSION BAY).
+    /// When multiple matches exist, returns the one closest to the given coordinates.
+    /// </summary>
+    public async Task<NavaidInfo?> GetNavaidByStationName(string nameFirstWord, double lat, double lon, CancellationToken ct = default)
+    {
+        var navaids = await GetNavaids(ct);
+        var candidates = navaids.Where(n =>
+            n.Name.Equals(nameFirstWord, StringComparison.OrdinalIgnoreCase) ||
+            n.Name.StartsWith(nameFirstWord + " ", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (candidates.Count == 0) return null;
+        if (candidates.Count == 1) return candidates[0];
+
+        // Disambiguate by proximity to the fix's coordinates
+        return candidates
+            .OrderBy(n => Math.Pow(n.Latitude - lat, 2) + Math.Pow(n.Longitude - lon, 2))
+            .First();
+    }
+
     public async Task<(double Lat, double Lon)?> GetWaypointCoordinates(string identifier, CancellationToken ct = default)
     {
         // Check navaids first

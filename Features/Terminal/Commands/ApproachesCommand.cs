@@ -5,7 +5,7 @@ using ZoaReference.Features.Terminal.Services;
 
 namespace ZoaReference.Features.Terminal.Commands;
 
-public class ApproachesCommand(StarApproachConnectionService connectionService) : ITerminalCommand
+public class ApproachesCommand(StarApproachConnectionService connectionService, CifpService cifpService) : ITerminalCommand
 {
     public string Name => "approaches";
     public string[] Aliases => ["apps"];
@@ -36,6 +36,12 @@ public class ApproachesCommand(StarApproachConnectionService connectionService) 
             var (star, starConnections) = await connectionService.FindConnectionsForStar(airportId, query);
             if (star is null)
             {
+                var availableStars = await cifpService.GetStarNamesForAirport(airportId);
+                if (availableStars.Count > 0)
+                {
+                    var list = string.Join(", ", availableStars.OrderBy(s => s));
+                    return CommandResult.FromError($"STAR '{query}' not found at {airportId}. Available: {list}");
+                }
                 return CommandResult.FromError($"STAR '{query}' not found at {airportId}");
             }
             connections = starConnections;
@@ -59,7 +65,10 @@ public class ApproachesCommand(StarApproachConnectionService connectionService) 
         if (connections.Count == 0)
         {
             var suffix = runwayFilters.Count > 0 ? $" (runways: {string.Join(", ", runwayFilters)})" : "";
-            return CommandResult.FromError($"No approach connections found for {headerLabel} at {airportId}{suffix}");
+            var msg = $"No approach connections found for {headerLabel} at {airportId}{suffix}";
+            if (StarApproachConnectionService.IsStarName(query))
+                msg += "\n(Vectors to final approach course may be required)";
+            return CommandResult.FromError(msg);
         }
 
         var sb = new StringBuilder();

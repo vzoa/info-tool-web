@@ -74,7 +74,7 @@ public class MetarCommand(IHttpClientFactory httpClientFactory) : ITerminalComma
             "VFR" => AnsiColor.Green,
             "MVFR" => AnsiColor.Cyan,
             "IFR" => AnsiColor.Red,
-            "LIFR" => AnsiColor.Yellow,
+            "LIFR" => AnsiColor.Magenta,
             _ => AnsiColor.White
         };
 
@@ -99,12 +99,11 @@ public class MetarCommand(IHttpClientFactory httpClientFactory) : ITerminalComma
         var wind = FormatWind(obs);
         sb.AppendLine($"  Wind:            {TextFormatter.Colorize(wind, AnsiColor.Cyan)}");
 
-        // Altimeter
+        // Altimeter — API returns value in mb, convert to inHg (1 mb = 0.02953 inHg)
         if (obs.Altimeter.HasValue)
         {
-            var altStr = $"A{obs.Altimeter.Value * 100:F0}".PadLeft(5, '0');
-            // Format as Axx.xx
-            altStr = $"A{obs.Altimeter.Value:F2}";
+            var inHg = obs.Altimeter.Value * 0.02953;
+            var altStr = $"A{inHg:F2}";
             sb.AppendLine($"  Altimeter:       {TextFormatter.Colorize(altStr, AnsiColor.Cyan)}");
         }
 
