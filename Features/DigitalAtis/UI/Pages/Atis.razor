@@ -51,10 +51,15 @@
 
     protected override void OnInitialized()
     {
-        //_atisList = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId)).ToList();
         var allDAtis = AtisRepository.GetAllAtis();
-        var filteredAirports = _airports.Select(a => allDAtis.FirstOrDefault(atis => atis.IcaoId == a));
-        _atisList = filteredAirports.Where(a => a is not null).ToList()!;
+        
+        // Use SelectMany to flatten all matching ATIS records for each airport
+        _atisList = _airports
+            .SelectMany(icao => allDAtis.Where(atis => atis.IcaoId == icao))
+            .OrderBy(a => a.IcaoId)
+            .ThenBy(a => a.Type)
+            .ToList();
+
         AtisRepository.NewInfoLetter += UpdateNewLetter;
         AtisRepository.NewAirportAdded += UpdateNewAirport;
     }
