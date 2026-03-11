@@ -104,6 +104,7 @@ public class NasrDataService(
         }
         catch (Exception ex)
         {
+            SentrySdk.CaptureException(ex);
             logger.LogError(ex, "Failed to fetch NASR data");
         }
     }
@@ -179,6 +180,7 @@ public class NasrDataService(
         }
         catch (Exception ex)
         {
+            SentrySdk.CaptureException(ex);
             logger.LogWarning(ex, "Failed to download NASR ZIP from {Url}", zipUrl);
             return null;
         }

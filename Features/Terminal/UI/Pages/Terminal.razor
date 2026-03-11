@@ -1,10 +1,12 @@
 @page "/terminal"
 @rendermode InteractiveServer
+@using Microsoft.Extensions.Options
 @using ZoaReference.Features.Terminal.Services
 @implements IAsyncDisposable
 
 @inject CommandDispatcher Dispatcher
 @inject IJSRuntime JS
+@inject IOptions<AppSettings> AppSettingsOptions
 
 <PageTitle>Terminal - ZOA Reference</PageTitle>
 
@@ -89,6 +91,7 @@
     [JSInvokable]
     public Task<string[]> GetCompletions(string partial)
     {
+        if (partial.Length > 200) partial = partial[..200];
         var completions = Dispatcher.GetCompletions(partial).ToArray();
         return Task.FromResult(completions);
     }
@@ -101,19 +104,26 @@
     /// <summary>
     /// Validates that a viewer URL is safe. Allowed:
     ///   - Relative paths (starting with /) — same-origin: charts API (/api/v1/charts/...)
-    ///   - https://oakartcc.org/... — ZOA procedure documents and custom documents
+    ///   - https URLs whose host matches or is a subdomain of an entry in AllowedViewerHosts
     /// Everything else (javascript:, data:, other domains) is rejected.
     /// External tools (tdls, strips) open via OpenTab and bypass this check entirely.
     /// </summary>
-    private static bool IsAllowedViewerUrl(string url)
+    private bool IsAllowedViewerUrl(string url)
     {
         if (url.StartsWith('/'))
         {
             return true;
         }
-        return Uri.TryCreate(url, UriKind.Absolute, out var uri) &&
-               uri.Scheme == Uri.UriSchemeHttps &&
-               uri.Host.Equals("oakartcc.org", StringComparison.OrdinalIgnoreCase);
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
+        {
+            return false;
+        }
+
+        var allowedHosts = AppSettingsOptions.Value.AllowedViewerHosts;
+        return allowedHosts.Any(allowed =>
+            uri.Host.Equals(allowed, StringComparison.OrdinalIgnoreCase) ||
+            uri.Host.EndsWith("." + allowed, StringComparison.OrdinalIgnoreCase));
     }
 
     public async ValueTask DisposeAsync()

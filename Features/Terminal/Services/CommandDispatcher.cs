@@ -124,6 +124,7 @@ public class CommandDispatcher
         catch (Exception ex)
         {
             sw.Stop();
+            SentrySdk.CaptureException(ex);
             _logger.LogError(ex, "Command execution failed");
             return CommandResult.FromError($"Command failed: {ex.Message}");
         }

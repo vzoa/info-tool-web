@@ -48,6 +48,7 @@ public class MetarCommand(IHttpClientFactory httpClientFactory) : ITerminalComma
         }
         catch (Exception ex)
         {
+            SentrySdk.CaptureException(ex);
             return CommandResult.FromError($"Failed to fetch METAR: {ex.Message}");
         }
 

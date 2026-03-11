@@ -21,6 +21,13 @@ public class AppSettings
 
     public List<CustomDocumentCategory> CustomDocuments { get; set; } = [];
 
+    /// <summary>
+    /// Hostnames allowed in the terminal viewer iframe (e.g. "oakartcc.org").
+    /// Subdomains of listed hosts are also permitted.
+    /// Relative paths ("/...") are always allowed regardless of this setting.
+    /// </summary>
+    public List<string> AllowedViewerHosts { get; set; } = [];
+
 
     public class CacheTtlSettings
     {
