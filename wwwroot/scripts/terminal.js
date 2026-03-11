@@ -11,6 +11,7 @@ let historyIndex = -1;
 let tempLine = "";
 let pendingSelectionCount = 0; // When >0, single digit keypress triggers selection
 
+
 const PROMPT = "\x1b[38;5;208mzoa\x1b[0m \x1b[36m❯\x1b[0m ";
 const PROMPT_LEN = 6; // "zoa ❯ " visible characters
 
@@ -92,6 +93,7 @@ export async function initialize(containerEl, ref) {
     terminal.open(containerEl);
     fitAddon.fit();
 
+
     // Welcome banner
     terminal.writeln("\x1b[38;5;208m" +
         "  ______  ___    _    ___      __                          \r\n" +
@@ -117,17 +119,14 @@ function writePrompt() {
     terminal.write(PROMPT);
 }
 
-function clearLine() {
-    terminal.write("\r" + PROMPT + " ".repeat(lineBuffer.length + 2) + "\r" + PROMPT);
-}
-
 function redrawLine() {
-    clearLine();
-    terminal.write(lineBuffer);
+    let output = "\x1b[?25l\r" + PROMPT + lineBuffer + "\x1b[K";
     const diff = lineBuffer.length - cursorPos;
     if (diff > 0) {
-        terminal.write(`\x1b[${diff}D`);
+        output += `\x1b[${diff}D`;
     }
+    output += "\x1b[?25h";
+    terminal.write(output);
 }
 
 async function submitInput(input) {
@@ -222,9 +221,13 @@ async function onData(data) {
 
     // --- Ctrl+L ---
     if (data === "\x0c") {
-        terminal.clear();
+        terminal.write("\x1b[2J\x1b[H");
         writePrompt();
         terminal.write(lineBuffer);
+        const diff = lineBuffer.length - cursorPos;
+        if (diff > 0) {
+            terminal.write(`\x1b[${diff}D`);
+        }
         return;
     }
 
@@ -364,13 +367,21 @@ async function onData(data) {
     if (data.startsWith("\x1b")) return;
 
     // Regular character input
+    const atEnd = cursorPos === lineBuffer.length;
+    let printable = "";
     for (const ch of data) {
         if (ch >= " ") {
             lineBuffer = lineBuffer.slice(0, cursorPos) + ch + lineBuffer.slice(cursorPos);
             cursorPos++;
+            printable += ch;
         }
     }
-    redrawLine();
+    if (printable.length === 0) return;
+    if (atEnd) {
+        terminal.write(printable);
+    } else {
+        redrawLine();
+    }
 }
 
 async function handleTabCompletion() {
