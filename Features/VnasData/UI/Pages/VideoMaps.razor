@@ -8,7 +8,7 @@
 @inject ProtectedSessionStorage ProtectedSessionStore
 
 @using Microsoft.Extensions.Options
-@inject IOptions<AppSettings> Settings
+@inject IOptionsMonitor<AppSettings> Settings
 
 <PageTitle>Vid Maps - @Settings.Value.ARTCC Reference</PageTitle>
 
@@ -51,7 +51,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var artcc = Settings.Value.ARTCC;
+        var artcc = Settings.CurrentValue.ARTCC;
         _facilities = (await VnasData.GetArtccFacilities(artcc)).Where(f => f.Facility.StarsConfiguration is not null);
     }
 
