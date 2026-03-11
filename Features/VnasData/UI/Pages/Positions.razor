@@ -9,7 +9,7 @@
 @using Microsoft.Extensions.Options
 @inject IOptionsMonitor<AppSettings> Settings
 
-<PageTitle>Positions - @Settings.Value.ARTCC Reference</PageTitle>
+<PageTitle>Positions - @Settings.CurrentValue.ARTCC Reference</PageTitle>
 
 <input @ref="@_input"
        class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5  mb-2 ml-1 w-40"

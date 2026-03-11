@@ -10,7 +10,7 @@
 @using Microsoft.Extensions.Options
 @inject IOptionsMonitor<AppSettings> Settings
 
-<PageTitle>Vid Maps - @Settings.Value.ARTCC Reference</PageTitle>
+<PageTitle>Vid Maps - @Settings.CurrentValue.ARTCC Reference</PageTitle>
 
 <div class="ml-1 mb-4">
     <select @bind:get="_selectedFacilityId" @bind:set="UpdateSelectedFacility"
