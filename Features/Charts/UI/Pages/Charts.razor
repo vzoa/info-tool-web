@@ -17,9 +17,14 @@
 <PageTitle>Charts - @Settings.Value.ARTCC Reference</PageTitle>
 
 <style>
-    .chart-dark-filter {
+    .pdf-container-dark {
+        background-color: #020617 !important;
+        color-scheme: dark; /* Chrome/Edge: Styles the PDF toolbar/gutter dark */
+    }
+
+    .pdf-invert-filter {
         filter: invert(93%) hue-rotate(180deg) brightness(1.1) contrast(0.9);
-        background-color: #0f172a;
+        background-color: #020617 !important;
     }
 </style>
 
@@ -181,13 +186,18 @@
         @if (_displayedChart is not null)
         {
             <div class="h-full flex flex-col">
-                <object class="pt-1 w-full grow @(_isDarkMode ? "chart-dark-filter" : "")" type="application/pdf"
-                        data="@(GetChartPdfUrl(_displayedChart) + "#view=FitH")">
-                    <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
-                       target="_blank" class="text-sky-400 underline">
-                        Open chart PDF directly
-                    </a>
-                </object>
+                <div class="pdf-wrapper pt-1 w-full grow @(_isDarkMode ? "pdf-container-dark" : "")">
+                    <object class="w-full h-full @(_isDarkMode ? "pdf-invert-filter" : "")"
+                            type="application/pdf"
+                            data="@(GetChartPdfUrl(_displayedChart) + "#view=FitH")">
+                        <div class="p-4">
+                            <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
+                               target="_blank" class="text-sky-400 underline">
+                                Open chart PDF directly
+                            </a>
+                        </div>
+                    </object>
+                </div>
             </div>
         }
     </div>
