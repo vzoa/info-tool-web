@@ -50,6 +50,18 @@ function wordBoundaryRight(buf, pos) {
     return i;
 }
 
+// --- Clipboard paste helper ---
+
+function insertPastedText(text) {
+    // Collapse to single line: strip carriage returns and replace newlines with spaces
+    const sanitized = text.replace(/\r\n?/g, " ").replace(/\n/g, " ").trim();
+    if (!sanitized) return;
+
+    lineBuffer = lineBuffer.slice(0, cursorPos) + sanitized + lineBuffer.slice(cursorPos);
+    cursorPos += sanitized.length;
+    redrawLine();
+}
+
 // --- Core ---
 
 export async function initialize(containerEl, ref) {
@@ -106,7 +118,39 @@ export async function initialize(containerEl, ref) {
     terminal.writeln("");
     writePrompt();
 
+    // Clipboard: Ctrl+C copies when text is selected, Ctrl+V lets browser paste natively
+    terminal.attachCustomKeyEventHandler((e) => {
+        if (e.type !== "keydown") return true;
+
+        // Ctrl+C: copy selected text, or fall through to ^C cancel
+        if (e.ctrlKey && e.key === "c") {
+            if (terminal.hasSelection()) {
+                navigator.clipboard.writeText(terminal.getSelection());
+                terminal.clearSelection();
+                return false;
+            }
+            return true;
+        }
+
+        // Ctrl+V: let browser handle natively (pasted text arrives via onData)
+        if (e.ctrlKey && e.key === "v") {
+            return false;
+        }
+
+        return true;
+    });
+
     terminal.onData(onData);
+
+    // Right-click paste (Ctrl+right-click for browser context menu)
+    // Attach to terminal.element so it captures events inside xterm's own DOM
+    terminal.element.addEventListener("contextmenu", (e) => {
+        if (e.ctrlKey) return;
+        e.preventDefault();
+        navigator.clipboard.readText().then((text) => {
+            if (text) insertPastedText(text);
+        });
+    });
 
     // Resize observer
     const resizeObserver = new ResizeObserver(() => {

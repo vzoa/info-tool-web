@@ -51,7 +51,7 @@
         {
             _dotnetRef = DotNetObjectReference.Create(this);
             _module = await JS.InvokeAsync<IJSObjectReference>(
-                "import", "/scripts/terminal.js?v=4");
+                "import", "/scripts/terminal.js?v=5");
             await _module.InvokeVoidAsync("initialize", _terminalContainer, _dotnetRef);
             return;
         }
