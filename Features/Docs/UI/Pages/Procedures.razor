@@ -28,7 +28,7 @@
 @if (!string.IsNullOrEmpty(_displayedPdfUrl))
 {
     <div class="grow flex flex-col">
-        <object class="mt-2 pt-1 w-full grow" type="application/pdf" data="@(_displayedPdfUrl + "#view=FitH")"></object>
+        <object class="mt-2 pt-1 w-full grow" type="application/pdf" data="@(_displayedPdfUrl + "#view=Fit&zoom=page-fit")"></object>
     </div>
 }
 
