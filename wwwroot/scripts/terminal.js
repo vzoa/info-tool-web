@@ -222,9 +222,13 @@ async function onData(data) {
 
     // --- Ctrl+L ---
     if (data === "\x0c") {
-        terminal.clear();
+        terminal.write("\x1b[2J\x1b[H");
         writePrompt();
         terminal.write(lineBuffer);
+        const diff = lineBuffer.length - cursorPos;
+        if (diff > 0) {
+            terminal.write(`\x1b[${diff}D`);
+        }
         return;
     }
 
