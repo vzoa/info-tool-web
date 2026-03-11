@@ -189,7 +189,7 @@
                 <div class="pdf-wrapper pt-1 w-full grow @(_isDarkMode ? "pdf-container-dark" : "")">
                     <object class="w-full h-full @(_isDarkMode ? "pdf-invert-filter" : "")"
                             type="application/pdf"
-                            data="@(GetChartPdfUrl(_displayedChart) + "#view=FitH")">
+                            data="@(GetChartPdfUrl(_displayedChart) + "#view=Fit&zoom=page-fit")">
                         <div class="p-4">
                             <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
                                target="_blank" class="text-sky-400 underline">
