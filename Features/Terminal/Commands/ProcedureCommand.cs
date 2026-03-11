@@ -1,26 +1,42 @@
 using System.Text;
+using ZoaReference.Features.Docs.Models;
 using ZoaReference.Features.Docs.Repositories;
+using ZoaReference.Features.Docs.Services;
 using ZoaReference.Features.Terminal.Services;
 
 namespace ZoaReference.Features.Terminal.Commands;
 
-public class ProcedureCommand(DocumentRepository documentRepository) : ITerminalCommand
+public class ProcedureCommand(
+    DocumentRepository documentRepository,
+    PdfSectionFinder sectionFinder) : ITerminalCommand
 {
+    private const string PdfViewerFragment = "#view=Fit&zoom=page-fit";
+
     public string Name => "sop";
     public string[] Aliases => ["proc"];
     public string Summary => "Search and open procedures/documents";
-    public string Usage => "sop              — List all document categories\n" +
-                           "    sop <query>      — Search documents by name";
+    public string Usage => "sop                          — List all document categories\n" +
+                           "    sop <query>                  — Search documents by name\n" +
+                           "    sop OAK                      — Open Oakland ATCT SOP\n" +
+                           "    sop OAK 2-2                  — Open OAK SOP at section 2-2\n" +
+                           "    sop SJC \"IFR Departures\"     — Open SJC SOP at section\n" +
+                           "    sop SJC \"IFR Departures\" SJCE — Find SJCE in section\n" +
+                           "    sop --list                   — List all document categories";
 
     public Task<CommandResult> ExecuteAsync(CommandArgs args)
     {
-        if (args.Positional.Length == 0)
+        if (args.Flags.ContainsKey("list") || args.Positional.Length == 0)
         {
             return Task.FromResult(ShowCategories());
         }
 
-        var query = string.Join(" ", args.Positional);
-        return Task.FromResult(SearchDocuments(query));
+        var parsed = ProcedureQuery.Parse(args.Positional);
+        if (string.IsNullOrWhiteSpace(parsed.ProcedureTerm))
+        {
+            return Task.FromResult(ShowCategories());
+        }
+
+        return Task.FromResult(SearchDocuments(parsed));
     }
 
     private CommandResult ShowCategories()
@@ -46,39 +62,36 @@ public class ProcedureCommand(DocumentRepository documentRepository) : ITerminal
         return CommandResult.FromText(sb.ToString());
     }
 
-    private CommandResult SearchDocuments(string query)
+    private CommandResult SearchDocuments(ProcedureQuery query)
     {
-        var matches = documentRepository.Documents
-            .Where(d => d.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        var (bestMatch, matches) = ProcedureMatcher.FindByName(
+            documentRepository.Documents,
+            query.ProcedureTerm);
 
         if (matches.Count == 0)
         {
-            return CommandResult.FromError($"No documents found matching '{query}'");
+            return CommandResult.FromError($"No documents found matching '{query.ProcedureTerm}'");
         }
 
-        if (matches.Count == 1)
+        if (bestMatch is not null)
         {
-            var doc = matches[0];
-            var text = $"  Opening: {TextFormatter.Colorize(doc.Name, AnsiColor.Green)}";
-            return CommandResult.FromUrl(text, doc.Url);
+            return OpenDocument(bestMatch.Value, query);
         }
 
+        // Ambiguous — show numbered disambiguation list
         var sb = new StringBuilder();
         var index = 1;
         var selections = new Dictionary<int, Func<Task<CommandResult>>>();
 
-        foreach (var doc in matches)
+        foreach (var match in matches)
         {
             var num = TextFormatter.Colorize($"  {index,3})", AnsiColor.Cyan);
-            sb.AppendLine($"{num} {doc.Name}");
+            var score = TextFormatter.Colorize($"({match.Score:F2})", AnsiColor.Gray);
+            sb.AppendLine($"{num} {match.Document.Name} {score}");
 
-            var url = doc.Url;
-            var name = doc.Name;
-            selections[index] = () => Task.FromResult(
-                CommandResult.FromUrl(
-                    $"  Opening: {TextFormatter.Colorize(name, AnsiColor.Green)}",
-                    url));
+            var doc = match.Document;
+            var q = query;
+            selections[index] = () => Task.FromResult(OpenDocument(doc, q));
             index++;
         }
 
@@ -86,6 +99,45 @@ public class ProcedureCommand(DocumentRepository documentRepository) : ITerminal
         sb.AppendLine($"  {TextFormatter.Colorize($"{matches.Count} documents found", AnsiColor.Gray)} — enter a number to open");
 
         return new CommandResult(sb.ToString()) { PendingSelections = selections };
+    }
+
+    private CommandResult OpenDocument(Document doc, ProcedureQuery query)
+    {
+        var sb = new StringBuilder();
+        var url = doc.Url;
+        int? pageNum = null;
+
+        if (query is { SectionTerm: not null, SearchTerm: not null })
+        {
+            pageNum = sectionFinder.FindTextInSection(
+                doc.Url, query.SectionTerm, query.SearchTerm);
+        }
+        else if (query.SectionTerm is not null)
+        {
+            pageNum = sectionFinder.FindSectionPage(doc.Url, query.SectionTerm);
+        }
+
+        if (pageNum is not null)
+        {
+            url = $"{doc.Url}#page={pageNum}";
+        }
+        else
+        {
+            url = $"{doc.Url}{PdfViewerFragment}";
+        }
+
+        sb.Append($"  Opening: {TextFormatter.Colorize(doc.Name, AnsiColor.Green)}");
+
+        if (query.SectionTerm is not null && pageNum is not null)
+        {
+            sb.Append($" — page {TextFormatter.Colorize(pageNum.Value.ToString(), AnsiColor.Cyan)}");
+        }
+        else if (query.SectionTerm is not null)
+        {
+            sb.Append($" — section '{TextFormatter.Colorize(query.SectionTerm, AnsiColor.Yellow)}' not found, opening first page");
+        }
+
+        return CommandResult.FromUrl(sb.ToString(), url);
     }
 
     public IEnumerable<string> GetCompletions(string partial, int argIndex) => [];
