@@ -14,6 +14,12 @@ let pendingSelectionCount = 0; // When >0, single digit keypress triggers select
 const PROMPT = "\x1b[38;5;208mzoa\x1b[0m \x1b[36m❯\x1b[0m ";
 const PROMPT_LEN = 6; // "zoa ❯ " visible characters
 
+const SELECTION_PROMPT = "\x1b[36m  select\x1b[0m \x1b[36m❯\x1b[0m ";
+const SELECTION_PROMPT_LEN = 11; // "  select ❯ " visible characters
+
+let activePrompt = PROMPT;
+let activePromptLen = PROMPT_LEN;
+
 function loadHistory() {
     try {
         const json = localStorage.getItem(HISTORY_KEY);
@@ -114,11 +120,19 @@ export async function initialize(containerEl, ref) {
 }
 
 function writePrompt() {
+    activePrompt = PROMPT;
+    activePromptLen = PROMPT_LEN;
     terminal.write(PROMPT);
 }
 
+function writeSelectionPrompt() {
+    activePrompt = SELECTION_PROMPT;
+    activePromptLen = SELECTION_PROMPT_LEN;
+    terminal.write(SELECTION_PROMPT);
+}
+
 function clearLine() {
-    terminal.write("\r" + PROMPT + " ".repeat(lineBuffer.length + 2) + "\r" + PROMPT);
+    terminal.write("\r" + activePrompt + " ".repeat(lineBuffer.length + 2) + "\r" + activePrompt);
 }
 
 function redrawLine() {
@@ -151,9 +165,10 @@ async function submitInput(input) {
                 terminal.writeln(line.replace(/\r$/, ""));
             }
 
-            // Detect pending selection prompt (line ending with "enter a number to open")
-            const lastNonEmpty = lines.filter(l => l.replace(/\r$/, "").trim()).pop() || "";
-            const selectionMatch = lastNonEmpty.match(/(\d+)\s+charts?\s+for/);
+            // Detect pending selection prompt. Strip ANSI codes first so digits
+            // inside escape sequences (e.g. \x1b[90m) don't pollute the match.
+            const plain = result.replace(/\x1b\[[0-9;]*m/g, "");
+            const selectionMatch = plain.match(/(\d+)[^\n]*enter a number to open/);
             if (selectionMatch) {
                 pendingSelectionCount = parseInt(selectionMatch[1], 10);
             } else {
@@ -177,8 +192,9 @@ async function onData(data) {
             pendingSelectionCount = 0;
             await submitInput(data);
             writePrompt();
-            return;
         }
+        // Out-of-range digit: ignore (match Python CLI prompt_single_choice behavior)
+        return;
     }
 
     // Any non-digit input clears pending selection mode
@@ -206,7 +222,11 @@ async function onData(data) {
             }
             await submitInput(input);
         }
-        writePrompt();
+        if (pendingSelectionCount > 0) {
+            writeSelectionPrompt();
+        } else {
+            writePrompt();
+        }
         return;
     }
 
