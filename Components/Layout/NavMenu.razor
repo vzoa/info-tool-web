@@ -1,5 +1,7 @@
 @rendermode InteractiveServer
 @implements IAsyncDisposable
+@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
 @inject IJSRuntime Js
 
 <div class="bg-slate-950 shadow-lg sticky left-0 top-0 z-40 flex items-center text-gray-400 border-b border-slate-700">
@@ -22,7 +24,7 @@
 </div>
 
 @code {
-    private List<string> _orderedKeys = new(NavItems.DefaultOrder);
+    private List<string> _orderedKeys = new();
     private bool _reorderMode;
     private ElementReference _ulRef;
     private IJSObjectReference? _module;
@@ -35,14 +37,29 @@
         {
             _module = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/navorder.js");
             var saved = await _module.InvokeAsync<string[]?>("loadOrder");
+            
+            // Priority 1: Config file. Priority 2: Hardcoded DefaultOrder in NavItems.cs
+            var allowedKeys = Settings.Value.NavigationOrder is { Count: > 0 } 
+                ? Settings.Value.NavigationOrder 
+                : NavItems.DefaultOrder;
+
             if (saved is { Length: > 0 })
             {
-                // Only use saved keys that still exist, then append any new ones
-                var validSaved = saved.Where(k => NavItems.All.ContainsKey(k)).ToList();
-                var missing = NavItems.DefaultOrder.Where(k => !validSaved.Contains(k));
+                // Only use saved keys that exist in NavItems AND are allowed by the current configuration
+                var validSaved = saved.Where(k => NavItems.All.ContainsKey(k) && allowedKeys.Contains(k)).ToList();
+                
+                // Ensure any newly added allowed keys appear even if they aren't in the browser's 'saved' list
+                var missing = allowedKeys.Where(k => !validSaved.Contains(k));
+                
                 _orderedKeys = validSaved.Concat(missing).ToList();
-                StateHasChanged();
             }
+            else
+            {
+                // Fallback to the current effective allowed list
+                _orderedKeys = new List<string>(allowedKeys);
+            }
+
+            StateHasChanged();
 
             _dotnetRef = DotNetObjectReference.Create(this);
             _dragHandle = await _module.InvokeAsync<IJSObjectReference>("enableDragDrop", _ulRef, _dotnetRef);
@@ -61,8 +78,14 @@
     [JSInvokable]
     public void OnOrderChanged(string[] newOrder)
     {
-        var valid = newOrder.Where(k => NavItems.All.ContainsKey(k)).ToList();
-        var missing = NavItems.DefaultOrder.Where(k => !valid.Contains(k));
+        var allowedKeys = Settings.Value.NavigationOrder is { Count: > 0 } 
+            ? Settings.Value.NavigationOrder 
+            : NavItems.DefaultOrder;
+
+        // Strip out any keys that are no longer allowed (e.g. if the config changed)
+        var valid = newOrder.Where(k => NavItems.All.ContainsKey(k) && allowedKeys.Contains(k)).ToList();
+        var missing = allowedKeys.Where(k => !valid.Contains(k));
+        
         _orderedKeys = valid.Concat(missing).ToList();
         InvokeAsync(StateHasChanged);
     }
