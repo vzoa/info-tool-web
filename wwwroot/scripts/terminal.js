@@ -11,6 +11,7 @@ let historyIndex = -1;
 let tempLine = "";
 let pendingSelectionCount = 0; // When >0, single digit keypress triggers selection
 
+
 const PROMPT = "\x1b[38;5;208mzoa\x1b[0m \x1b[36m❯\x1b[0m ";
 const PROMPT_LEN = 6; // "zoa ❯ " visible characters
 
@@ -53,6 +54,18 @@ function wordBoundaryRight(buf, pos) {
     while (i < buf.length && buf[i] !== " ") i++;
     while (i < buf.length && buf[i] === " ") i++;
     return i;
+}
+
+// --- Clipboard paste helper ---
+
+function insertPastedText(text) {
+    // Collapse to single line: strip carriage returns and replace newlines with spaces
+    const sanitized = text.replace(/\r\n?/g, " ").replace(/\n/g, " ").trim();
+    if (!sanitized) return;
+
+    lineBuffer = lineBuffer.slice(0, cursorPos) + sanitized + lineBuffer.slice(cursorPos);
+    cursorPos += sanitized.length;
+    redrawLine();
 }
 
 // --- Core ---
@@ -98,6 +111,7 @@ export async function initialize(containerEl, ref) {
     terminal.open(containerEl);
     fitAddon.fit();
 
+
     // Welcome banner
     terminal.writeln("\x1b[38;5;208m" +
         "  ______  ___    _    ___      __                          \r\n" +
@@ -110,7 +124,39 @@ export async function initialize(containerEl, ref) {
     terminal.writeln("");
     writePrompt();
 
+    // Clipboard: Ctrl+C copies when text is selected, Ctrl+V lets browser paste natively
+    terminal.attachCustomKeyEventHandler((e) => {
+        if (e.type !== "keydown") return true;
+
+        // Ctrl+C: copy selected text, or fall through to ^C cancel
+        if (e.ctrlKey && e.key === "c") {
+            if (terminal.hasSelection()) {
+                navigator.clipboard.writeText(terminal.getSelection());
+                terminal.clearSelection();
+                return false;
+            }
+            return true;
+        }
+
+        // Ctrl+V: let browser handle natively (pasted text arrives via onData)
+        if (e.ctrlKey && e.key === "v") {
+            return false;
+        }
+
+        return true;
+    });
+
     terminal.onData(onData);
+
+    // Right-click paste (Ctrl+right-click for browser context menu)
+    // Attach to terminal.element so it captures events inside xterm's own DOM
+    terminal.element.addEventListener("contextmenu", (e) => {
+        if (e.ctrlKey) return;
+        e.preventDefault();
+        navigator.clipboard.readText().then((text) => {
+            if (text) insertPastedText(text);
+        });
+    });
 
     // Resize observer
     const resizeObserver = new ResizeObserver(() => {
@@ -131,17 +177,14 @@ function writeSelectionPrompt() {
     terminal.write(SELECTION_PROMPT);
 }
 
-function clearLine() {
-    terminal.write("\r" + activePrompt + " ".repeat(lineBuffer.length + 2) + "\r" + activePrompt);
-}
-
 function redrawLine() {
-    clearLine();
-    terminal.write(lineBuffer);
+    let output = "\x1b[?25l\r" + activePrompt + lineBuffer + "\x1b[K";
     const diff = lineBuffer.length - cursorPos;
     if (diff > 0) {
-        terminal.write(`\x1b[${diff}D`);
+        output += `\x1b[${diff}D`;
     }
+    output += "\x1b[?25h";
+    terminal.write(output);
 }
 
 async function submitInput(input) {
@@ -242,9 +285,13 @@ async function onData(data) {
 
     // --- Ctrl+L ---
     if (data === "\x0c") {
-        terminal.clear();
+        terminal.write("\x1b[2J\x1b[H");
         writePrompt();
         terminal.write(lineBuffer);
+        const diff = lineBuffer.length - cursorPos;
+        if (diff > 0) {
+            terminal.write(`\x1b[${diff}D`);
+        }
         return;
     }
 
@@ -384,13 +431,21 @@ async function onData(data) {
     if (data.startsWith("\x1b")) return;
 
     // Regular character input
+    const atEnd = cursorPos === lineBuffer.length;
+    let printable = "";
     for (const ch of data) {
         if (ch >= " ") {
             lineBuffer = lineBuffer.slice(0, cursorPos) + ch + lineBuffer.slice(cursorPos);
             cursorPos++;
+            printable += ch;
         }
     }
-    redrawLine();
+    if (printable.length === 0) return;
+    if (atEnd) {
+        terminal.write(printable);
+    } else {
+        redrawLine();
+    }
 }
 
 async function handleTabCompletion() {

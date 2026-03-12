@@ -119,7 +119,7 @@ public partial class ChartCommand(AviationApiChartService chartService, AirportR
     }
 
     private static string GetChartPdfUrl(Charts.Models.Chart chart)
-        => $"/api/v1/charts/{Uri.EscapeDataString(chart.IcaoIdent)}/{Uri.EscapeDataString(chart.ChartName)}#view=FitH";
+        => $"/api/v1/charts/{Uri.EscapeDataString(chart.IcaoIdent)}/{Uri.EscapeDataString(chart.ChartName)}#view=Fit&zoom=page-fit";
 
     private static int ChartCodeOrder(string code) => code.ToUpperInvariant() switch
     {
