@@ -10,38 +10,10 @@ public partial record ProcedureQuery(
     string? SectionTerm,
     string? SearchTerm)
 {
-    private static readonly HashSet<string> ClassDAirports =
-    [
-        "APC", "CCR", "CIC", "HWD", "LVK", "MER", "MHR", "MOD",
-        "NUQ", "PAO", "RDD", "RHV", "SAC", "SCK", "SNS", "SQL", "STS", "TRK"
-    ];
-
     private static readonly HashSet<string> ProcKeywords =
         ["ATCT", "SOP", "TRACON", "LOA", "CPS", "CENTER"];
 
-    private static readonly HashSet<string> AirportCodes =
-    [
-        "SFO", "OAK", "SJC", "SMF", "RNO", "FAT", "MRY", "BAB",
-        "APC", "CCR", "CIC", "HWD", "LVK", "MER", "MHR", "MOD",
-        "NUQ", "PAO", "RDD", "RHV", "SAC", "SCK", "SNS", "SQL",
-        "STS", "SUU", "TRK", "NCT", "ZOA", "ZLA", "ZLC", "ZSE",
-        "NFL", "NLC", "ZAK"
-    ];
-
-    private static readonly Dictionary<string, string> AirportAliases = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["SFO"] = "SAN FRANCISCO ATCT",
-        ["OAK"] = "OAKLAND ATCT",
-        ["SJC"] = "SAN JOSE ATCT",
-        ["SMF"] = "SACRAMENTO ATCT",
-        ["RNO"] = "RENO ATCT",
-        ["FAT"] = "FRESNO ATCT TRACON SOP",
-        ["MRY"] = "MONTEREY ATCT",
-        ["NCT"] = "NORCAL TRACON",
-        ["ZOA"] = "OAKLAND CENTER"
-    };
-
-    public static ProcedureQuery Parse(string[] parts)
+    public static ProcedureQuery Parse(string[] parts, ProcedureSearchConfig config)
     {
         if (parts.Length == 0)
         {
@@ -62,24 +34,24 @@ public partial record ProcedureQuery(
                 SectionNumberRegex().IsMatch(partUpper) ||
                 (i > 0
                  && !ProcKeywords.Contains(partUpper)
-                 && !AirportCodes.Contains(partUpper)
+                 && !config.AirportCodes.Contains(partUpper)
                  && part.Length > 1);
 
             if (i == 1 && procedureParts.Count > 0)
             {
                 var firstUpper = procedureParts[0].ToUpperInvariant();
-                if ((AirportCodes.Contains(firstUpper) || ProcKeywords.Contains(firstUpper))
+                if ((config.AirportCodes.Contains(firstUpper) || ProcKeywords.Contains(firstUpper))
                     && isSectionStart)
                 {
                     break;
                 }
 
-                if (AirportAliases.ContainsKey(firstUpper) && !ProcKeywords.Contains(partUpper))
+                if (config.AirportAliases.ContainsKey(firstUpper) && !ProcKeywords.Contains(partUpper))
                 {
                     break;
                 }
 
-                if (!AirportCodes.Contains(firstUpper) && !ProcKeywords.Contains(firstUpper))
+                if (!config.AirportCodes.Contains(firstUpper) && !ProcKeywords.Contains(firstUpper))
                 {
                     break;
                 }
@@ -89,7 +61,7 @@ public partial record ProcedureQuery(
             {
                 var firstUpper = procedureParts[0].ToUpperInvariant();
                 var lastUpper = procedureParts[^1].ToUpperInvariant();
-                if (AirportCodes.Contains(firstUpper) && ProcKeywords.Contains(lastUpper))
+                if (config.AirportCodes.Contains(firstUpper) && ProcKeywords.Contains(lastUpper))
                 {
                     break;
                 }
@@ -117,7 +89,7 @@ public partial record ProcedureQuery(
 
         var procedureTerm = string.Join(" ", procedureParts);
 
-        if (ClassDAirports.Contains(procedureTerm.ToUpperInvariant()))
+        if (config.ClassDAirports.Contains(procedureTerm.ToUpperInvariant()))
         {
             var airportCode = procedureTerm.ToUpperInvariant();
             return new ProcedureQuery(

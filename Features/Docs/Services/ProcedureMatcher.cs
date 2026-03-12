@@ -5,46 +5,26 @@ namespace ZoaReference.Features.Docs.Services;
 
 public record ProcedureMatch(Document Document, double Score);
 
-public static partial class ProcedureMatcher
+public partial class ProcedureMatcher(ProcedureSearchConfig config)
 {
-    private static readonly Dictionary<string, string> AirportAliases = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["SFO"] = "SAN FRANCISCO ATCT",
-        ["OAK"] = "OAKLAND ATCT",
-        ["SJC"] = "SAN JOSE ATCT",
-        ["SMF"] = "SACRAMENTO ATCT",
-        ["RNO"] = "RENO ATCT",
-        ["FAT"] = "FRESNO ATCT TRACON SOP",
-        ["MRY"] = "MONTEREY ATCT",
-        ["NCT"] = "NORCAL TRACON",
-        ["ZOA"] = "OAKLAND CENTER"
-    };
-
-    private static readonly Dictionary<string, string[]> ProcedureAliases = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["NCT"] = ["NORCAL TRACON", "NORTHERN CALIFORNIA TRACON"],
-        ["NORCAL"] = ["NCT", "NORTHERN CALIFORNIA TRACON"],
-        ["ZOA"] = ["OAKLAND CENTER"]
-    };
-
     private const double MinimumThreshold = 0.2;
     private const double AmbiguityThreshold = 0.15;
 
-    public static (Document? BestMatch, List<ProcedureMatch> Matches) FindByName(
+    public (Document? BestMatch, List<ProcedureMatch> Matches) FindByName(
         IEnumerable<Document> documents,
         string procedureTerm)
     {
         var searchTerm = procedureTerm.ToUpperInvariant();
 
         var searchTerms = new List<string> { searchTerm };
-        if (ProcedureAliases.TryGetValue(searchTerm, out var aliases))
+        if (config.ProcedureAliases.TryGetValue(searchTerm, out var aliases))
         {
             searchTerms.AddRange(aliases);
         }
 
         foreach (var token in AlphanumTokenRegex().Matches(searchTerm).Select(m => m.Value))
         {
-            if (token != searchTerm && ProcedureAliases.TryGetValue(token, out var tokenAliases))
+            if (token != searchTerm && config.ProcedureAliases.TryGetValue(token, out var tokenAliases))
             {
                 foreach (var alias in tokenAliases)
                 {
@@ -138,7 +118,7 @@ public static partial class ProcedureMatcher
         return (bestMatch.Document, matches);
     }
 
-    private static double CalculateSimilarity(string query, string target)
+    private double CalculateSimilarity(string query, string target)
     {
         query = ExpandAirportAliases(query);
         target = target.ToUpperInvariant();
@@ -201,12 +181,12 @@ public static partial class ProcedureMatcher
         return Math.Min(1.0, jaccard + substringBonus + prefixBonus + editBonus);
     }
 
-    private static string ExpandAirportAliases(string query)
+    private string ExpandAirportAliases(string query)
     {
         var queryUpper = query.ToUpperInvariant();
         var tokens = queryUpper.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-        if (tokens.Length == 1 && AirportAliases.TryGetValue(tokens[0], out var alias))
+        if (tokens.Length == 1 && config.AirportAliases.TryGetValue(tokens[0], out var alias))
         {
             return $"{tokens[0]} {alias}";
         }

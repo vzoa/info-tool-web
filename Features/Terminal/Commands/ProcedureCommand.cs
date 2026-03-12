@@ -8,7 +8,9 @@ namespace ZoaReference.Features.Terminal.Commands;
 
 public class ProcedureCommand(
     DocumentRepository documentRepository,
-    PdfSectionFinder sectionFinder) : ITerminalCommand
+    PdfSectionFinder sectionFinder,
+    ProcedureMatcher procedureMatcher,
+    ProcedureSearchConfig searchConfig) : ITerminalCommand
 {
     private const string PdfViewerFragment = "#view=Fit&zoom=page-fit";
 
@@ -30,7 +32,7 @@ public class ProcedureCommand(
             return Task.FromResult(ShowCategories());
         }
 
-        var parsed = ProcedureQuery.Parse(args.Positional);
+        var parsed = ProcedureQuery.Parse(args.Positional, searchConfig);
         if (string.IsNullOrWhiteSpace(parsed.ProcedureTerm))
         {
             return Task.FromResult(ShowCategories());
@@ -64,7 +66,7 @@ public class ProcedureCommand(
 
     private CommandResult SearchDocuments(ProcedureQuery query)
     {
-        var (bestMatch, matches) = ProcedureMatcher.FindByName(
+        var (bestMatch, matches) = procedureMatcher.FindByName(
             documentRepository.Documents,
             query.ProcedureTerm);
 

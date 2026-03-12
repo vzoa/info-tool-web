@@ -12,6 +12,8 @@ public class DocsModule : IServiceConfigurator, ISchedulerConfigurator
     {
         services.AddSingleton<DocumentRepository>();
         services.AddSingleton<PdfSectionFinder>();
+        services.AddSingleton<ProcedureSearchConfig>();
+        services.AddSingleton<ProcedureMatcher>();
         services.AddTransient<FetchAndStoreDocs>();
         return services;
     }
