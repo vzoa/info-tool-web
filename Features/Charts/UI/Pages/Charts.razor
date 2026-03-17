@@ -14,23 +14,18 @@
 <PageTitle>Charts - @Settings.Value.ARTCC Reference</PageTitle>
 
 <style>
-    /* The container background behind the PDF */
-    .pdf-container-dark {
-        background-color: #020617 !important;
-    }
-
     /* Target the PDF object specifically */
     .pdf-invert-filter {
         /* This filter inverts the white to black while keeping icons/text relatively crisp */
         filter: invert(90%) hue-rotate(180deg) brightness(1.1) contrast(90%);
-        background-color: #020617 !important;
-        /* Ensure the object fills the container so the filter covers the whole area */
+        /* REMOVE the background-color rule from here */
         display: block;
     }
 
-    /* Force the object container to be dark to prevent "white flash" */
+    /* Force the object container to be light so our filter can invert it reliably */
     object[type="application/pdf"] {
-        background-color: #020617 !important;
+        color-scheme: light !important; 
+        background-color: #ffffff !important; 
     }
 </style>
 
@@ -195,7 +190,6 @@
                 <div class="pdf-wrapper pt-1 w-full grow bg-slate-950 @(_isDarkMode ? "pdf-container-dark" : "")">
                     <object class="w-full h-full @(_isDarkMode ? "pdf-invert-filter" : "")"
                             type="application/pdf"
-                            style="background-color: @(_isDarkMode ? "#020617" : "#ffffff")"                            
                             data="@(GetChartPdfUrl(_displayedChart) + "#view=Fit&zoom=page-fit")">
                         <div class="p-4">
                             <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
