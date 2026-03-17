@@ -7,7 +7,10 @@
 @inject IOptionsMonitor<AppSettings> AppSettings
 @inject IJSRuntime Js
 
-<PageTitle>Procedures - ZOA Reference</PageTitle>
+@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
+
+<PageTitle>Procedures - @Settings.Value.ARTCC Reference</PageTitle>
 
 <div>
     <select @bind="_displayedPdfUrl" @bind:after="UpdateStoredUrl" class="p-2 bg-gray-700 text-gray-100 w-[600px]">
@@ -25,7 +28,7 @@
 @if (!string.IsNullOrEmpty(_displayedPdfUrl))
 {
     <div class="grow flex flex-col">
-        <object class="mt-2 pt-1 w-full grow" type="application/pdf" data="@_displayedPdfUrl"></object>
+        <object class="mt-2 pt-1 w-full grow" type="application/pdf" data="@(_displayedPdfUrl + "#view=Fit&zoom=page-fit")"></object>
     </div>
 }
 

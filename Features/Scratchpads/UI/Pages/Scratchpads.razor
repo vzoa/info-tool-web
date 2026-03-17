@@ -6,7 +6,10 @@
 @inject IJSRuntime Js
 @inject ScratchpadsRepository ScratchpadRepository
 
-<PageTitle>Scratchpads - ZOA Reference</PageTitle>
+@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
+
+<PageTitle>Scratchpads - @Settings.Value.ARTCC Reference</PageTitle>
 
 <div class="ml-1 mb-4">
     <select @ref="_dropdown" @bind:get="_selectedFacilityId" @bind:set="UpdateSelectedFacility"

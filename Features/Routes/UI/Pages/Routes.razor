@@ -12,8 +12,12 @@
 @inject LoaRuleRepository LoaRules
 @inject AirportRepository Airports
 @inject IJSRuntime Js
+@inject NavigationManager NavigationManager
 
-<PageTitle>Routes - ZOA Reference</PageTitle>
+@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
+
+<PageTitle>Routes - @Settings.Value.ARTCC Reference</PageTitle>
 
 
 <div class="flex flex-col text-s gap-8">
@@ -159,6 +163,12 @@
 @code {
     private readonly RouteForm _routeForm = new();
 
+    [SupplyParameterFromQuery(Name = "dep")]
+    public string? QueryDeparture { get; set; }
+
+    [SupplyParameterFromQuery(Name = "dest")]
+    public string? QueryDestination { get; set; }
+
     private AirportPairRouteSummary? _displayedRwRoutes;
     private IEnumerable<AliasRouteRule> _displayedAliasRouteRules = Enumerable.Empty<AliasRouteRule>();
     private IEnumerable<LoaRule> _displayedLoaRules = Enumerable.Empty<LoaRule>();
@@ -171,12 +181,21 @@
         if (firstRender)
         {
             _storage = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/storage.js");
-            var savedState = await _storage.InvokeAsync<SavedAirportPairRoutes?>("get", SavedAirportPairRoutesStorageKey);
-            if (savedState is not null)
+            if (!string.IsNullOrWhiteSpace(QueryDeparture) && !string.IsNullOrWhiteSpace(QueryDestination))
             {
-                _routeForm.DepartureId = savedState.Value.DepartureId;
-                _routeForm.ArrivalId = savedState.Value.ArrivalId;
+                _routeForm.DepartureId = QueryDeparture;
+                _routeForm.ArrivalId = QueryDestination;
                 await RouteSubmit();
+            }
+            else
+            {
+                var savedState = await _storage.InvokeAsync<SavedAirportPairRoutes?>("get", SavedAirportPairRoutesStorageKey);
+                if (savedState is not null)
+                {
+                    _routeForm.DepartureId = savedState.Value.DepartureId;
+                    _routeForm.ArrivalId = savedState.Value.ArrivalId;
+                    await RouteSubmit();
+                }
             }
 
             StateHasChanged();
@@ -231,6 +250,9 @@
             {
                 await _storage.InvokeVoidAsync("set", SavedAirportPairRoutesStorageKey, new SavedAirportPairRoutes(_routeForm.DepartureId, _routeForm.ArrivalId));
             }
+            NavigationManager.NavigateTo(
+                NavigationManager.GetUriWithQueryParameters(new Dictionary<string, object?> { ["dep"] = _routeForm.DepartureId, ["dest"] = _routeForm.ArrivalId }),
+                replace: true);
         }
     }
 

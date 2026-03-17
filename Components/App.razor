@@ -1,4 +1,7 @@
-﻿<!DOCTYPE html>
+﻿@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
+
+<!DOCTYPE html>
 <html lang="en" class="min-h-screen">
 
 <head>
@@ -10,6 +13,7 @@
     <link rel="icon" type="image/x-icon" href="favicon.ico"/>
 
     <link rel="stylesheet" href="css/styles.css" asp-append-version="true"/>
+    <link rel="stylesheet" href="https://esm.sh/@@xterm/xterm@@5/css/xterm.css"/>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,7 +35,7 @@
         };
     </script>
     <HeadOutlet/>
-    <title>ZOA Reference</title>
+    <title>@Settings.Value.ARTCC Reference</title>
 </head>
 
 <body class="bg-slate-800 text-gray-100 min-h-screen">

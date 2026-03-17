@@ -7,7 +7,10 @@
 @inject AirportRepository Airports
 @inject AircraftTypeRepository AircraftTypes
 
-<PageTitle>Codes - ZOA Reference</PageTitle>
+@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
+
+<PageTitle>Codes - @Settings.Value.ARTCC Reference</PageTitle>
 
 
 <div class="flex flex-col text-s gap-8">

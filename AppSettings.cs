@@ -5,6 +5,7 @@ namespace ZoaReference;
 public class AppSettings
 {
     public const string SectionKeyName = "AppSettings";
+    public string ARTCC { get; set; } = string.Empty;
     public int VatsimDataKeepForfHours { get; set; } = 24;
     public int VatsimDatafeedRefreshSeconds { get; set; } = 15;
     public int DigitalAtisRefreshSeoncds { get; set; } = 60;
@@ -16,7 +17,19 @@ public class AppSettings
     public string ReferenceBindersDirectoryInWwwroot { get; set; } = string.Empty;
     public string DocumentsPdfPath { get; set; } = string.Empty;
 
+    public Dictionary<string, string> AirportAliases { get; set; } = new();
+    public Dictionary<string, string[]> ProcedureAliases { get; set; } = new();
+
+    public List<string> NavigationOrder { get; set; } = new();
+
     public List<CustomDocumentCategory> CustomDocuments { get; set; } = [];
+
+    /// <summary>
+    /// Hostnames allowed in the terminal viewer iframe (e.g. "oakartcc.org").
+    /// Subdomains of listed hosts are also permitted.
+    /// Relative paths ("/...") are always allowed regardless of this setting.
+    /// </summary>
+    public List<string> AllowedViewerHosts { get; set; } = [];
 
 
     public class CacheTtlSettings
@@ -59,6 +72,9 @@ public class AppSettings
         public ICollection<string> Charlies { get; set; } = new List<string>();
         public ICollection<string> Deltas { get; set; } = new List<string>();
         public ICollection<string> Other { get; set; } = new List<string>();
+
+        public ICollection<string> AtisAirports { get; set; } = new List<string>();
+        
         public ICollection<string> All => Bravos.Concat(Charlies).Concat(Deltas).ToList();
     }
 }

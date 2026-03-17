@@ -3,9 +3,12 @@
 @using ZoaReference.Features.DigitalAtis.Repositories
 @implements IDisposable;
 
+@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
+
 @inject DigitalAtisRepository AtisRepository;
 
-<PageTitle>ATIS - ZOA Reference</PageTitle>
+<PageTitle>ATIS - @Settings.Value.ARTCC Reference</PageTitle>
 
 @if (_atisList is not null)
 {
@@ -37,7 +40,7 @@
 
 
 @code {
-    private readonly string[] _airports = { "KSFO", "KSJC", "KRNO", "KOAK", "KSMF" };
+    private IEnumerable<string> _airports => Settings.Value.ArtccAirports.AtisAirports;
     private List<Models.Atis>? _atisList;
 
     private static string GetIssueTimeString(Models.Atis atis)
@@ -47,10 +50,8 @@
 
     protected override void OnInitialized()
     {
-        //_atisList = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId)).ToList();
-        var allDAtis = AtisRepository.GetAllAtis();
-        var filteredAirports = _airports.Select(a => allDAtis.FirstOrDefault(atis => atis.IcaoId == a));
-        _atisList = filteredAirports.Where(a => a is not null).ToList()!;
+        UpdateDisplayedAtis();
+
         AtisRepository.NewInfoLetter += UpdateNewLetter;
         AtisRepository.NewAirportAdded += UpdateNewAirport;
     }
@@ -67,7 +68,17 @@
 
     private void UpdateDisplayedAtis()
     {
-        _atisList = AtisRepository.GetAllAtis().Where(a => _airports.Contains(a.IcaoId)).ToList();
+        var allDAtis = AtisRepository.GetAllAtis();
+        
+        // 1. Iterate in the order of _airports (from config)
+        // 2. Grab ALL types for that airport
+        // 3. Sort types (Combined -> Departure -> Arrival) so they look consistent
+        _atisList = _airports
+            .SelectMany(icao => allDAtis
+                .Where(atis => atis != null && atis.IcaoId == icao)
+                .OrderBy(a => a.Type)) 
+            .ToList();
+
         _ = InvokeAsync(StateHasChanged);
     }
 

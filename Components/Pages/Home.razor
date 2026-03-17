@@ -5,6 +5,8 @@
 @inject IJSRuntime Js
 
 @using ZoaReference.Components.Layout
+@using Microsoft.Extensions.Options
+@inject IOptions<AppSettings> Settings
 
 @code {
 
@@ -12,11 +14,19 @@
     {
         if (!firstRender) return;
 
-        var href = NavItems.All[NavItems.DefaultOrder[0]].Href;
+        // 1. Determine the "Configured" default (Priority: appsettings.json > NavItems.cs)
+        var effectiveOrder = Settings.Value.NavigationOrder is { Count: > 0 } 
+            ? Settings.Value.NavigationOrder 
+            : NavItems.DefaultOrder;
+
+        var href = NavItems.All[effectiveOrder[0]].Href;
+
         try
         {
             var module = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/navorder.js");
             var saved = await module.InvokeAsync<string[]?>("loadOrder");
+            
+            // 2. Override with browser's saved drag-and-drop order if it exists
             if (saved is { Length: > 0 } && NavItems.All.TryGetValue(saved[0], out var item))
             {
                 href = item.Href;
@@ -27,5 +37,4 @@
 
         Navigation.NavigateTo(href);
     }
-
 }
