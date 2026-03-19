@@ -72,11 +72,11 @@ public partial class ProcedureMatcher(ProcedureSearchConfig config)
 
         var bestMatch = matches[0];
 
-        if (bestMatch.Score >= 1.0)
-        {
-            return (bestMatch.Document, matches);
-        }
-
+        // For multi-token queries, prefer the match containing ALL original tokens.
+        // This must run before the score-based shortcut because alias expansion can
+        // inflate scores for partial matches (e.g., "NCT ZOA" expands ZOA →
+        // "OAKLAND CENTER" which scores 1.0 against "Oakland Center SOP", but the
+        // user wanted the LOA that contains both NCT and ZOA).
         if (queryTokens.Count > 1)
         {
             var fullMatches = matches.Where(m =>
