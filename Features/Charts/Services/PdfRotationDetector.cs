@@ -8,6 +8,8 @@ namespace ZoaReference.Features.Charts.Services;
 /// </summary>
 public class PdfRotationDetector
 {
+    private const int MinLettersForRotation = 100;
+
     public int DetectRotation(byte[] pdfBytes)
     {
         try
@@ -41,7 +43,8 @@ public class PdfRotationDetector
                 }
             }
 
-            if (angleCounts.Count == 0)
+            var totalLetters = angleCounts.Values.Sum();
+            if (totalLetters < MinLettersForRotation)
             {
                 return 0;
             }
@@ -50,12 +53,14 @@ public class PdfRotationDetector
             var rotated90 = CountBucket(angleCounts, [80, 90, 100]);
             var rotatedNeg90 = CountBucket(angleCounts, [-80, -90, -100]);
 
-            if (rotated90 > upright && rotated90 >= rotatedNeg90)
+            if (rotated90 > upright && rotated90 >= rotatedNeg90
+                && rotated90 > totalLetters / 2)
             {
                 return 90;
             }
 
-            if (rotatedNeg90 > upright && rotatedNeg90 > rotated90)
+            if (rotatedNeg90 > upright && rotatedNeg90 > rotated90
+                && rotatedNeg90 > totalLetters / 2)
             {
                 return -90;
             }
