@@ -96,7 +96,7 @@ public class ChartPdfProcessingService(
             var processed = await GetProcessedPdf(chart);
             if (processed is not null)
             {
-                scrollToPage = pdfSectionFinder.FindPageFromBytes(processed.PdfData, chart.FaaIdent);
+                scrollToPage = pdfSectionFinder.FindPageFromBytes(processed.PdfData, $"({chart.FaaIdent})");
             }
         }
         catch (Exception ex)
