@@ -3,9 +3,11 @@
 @using Microsoft.Extensions.Options
 @using ZoaReference.Features.Charts.Models
 @using ZoaReference.Features.Charts.Services
+@using ZoaReference.Features.Docs.Services
 @rendermode InteractiveServer
 
 @inject AviationApiChartService AviationApiChartService
+@inject ChartPdfProcessingService ChartPdfProcessingService
 @inject StarApproachConnectionService StarApproachConnectionService
 @inject IOptionsMonitor<AppSettings> AppSettings
 @inject IJSRuntime Js
@@ -190,7 +192,7 @@
                 <div class="pdf-wrapper pt-1 w-full grow bg-slate-950 @(_isDarkMode ? "pdf-container-dark" : "")">
                     <object class="w-full h-full @(_isDarkMode ? "pdf-invert-filter" : "")"
                             type="application/pdf"
-                            data="@(GetChartPdfUrl(_displayedChart) + "#view=Fit&zoom=page-fit")">
+                            data="@GetChartUrlWithFragment(_displayedChart)">
                         <div class="p-4">
                             <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
                                target="_blank" class="text-sky-400 underline">
@@ -209,6 +211,7 @@
     private string _airportId = "";
 
     private Chart? _displayedChart;
+    private int? _scrollToPage;
 
     private OrganizedCharts _organizedCharts = new() { Info = [], Sid = [], Star = [], Approach = [] };
     private readonly List<Airport> _airports = [];
@@ -652,14 +655,23 @@
         }
 
         _displayedChart = chart;
+        _scrollToPage = null;
+
+        if (chart.ChartCode is "MIN" or "HOT" or "LAH")
+        {
+            _scrollToPage = await ChartPdfProcessingService.FindPageContainingFaaCode(chart);
+        }
+
         if (_storage is not null)
         {
             await _storage.InvokeVoidAsync("set", ChartStateStorageKey, new ChartState(_airportId, _displayedChart));
         }
     }
 
-    private static string GetChartPdfUrl(Chart chart)
-        => $"/api/v1/charts/{Uri.EscapeDataString(chart.IcaoIdent)}/{Uri.EscapeDataString(chart.ChartName)}";
+    private string GetChartUrlWithFragment(Chart chart)
+    {
+        return $"{chart.PdfUrl}#view=Fit&zoom=page-fit" + (_scrollToPage is not null ? $"&page={_scrollToPage}" : string.Empty);
+    }
 
     private async Task ClearFilterInput(bool setFocus = true)
     {
