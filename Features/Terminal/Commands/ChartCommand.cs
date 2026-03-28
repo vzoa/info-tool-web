@@ -6,7 +6,8 @@ using ZoaReference.Features.Terminal.Services;
 
 namespace ZoaReference.Features.Terminal.Commands;
 
-public partial class ChartCommand(AviationApiChartService chartService, AirportRepository airportRepository) : ITerminalCommand
+public partial class ChartCommand(AviationApiChartService chartService, AirportRepository airportRepository,
+    ChartPdfProcessingService chartPdfProcessingService) : ITerminalCommand
 {
     private static readonly Dictionary<string, string> DigitToWord = new()
     {
@@ -76,16 +77,16 @@ public partial class ChartCommand(AviationApiChartService chartService, AirportR
         if (chartList.Count == 1)
         {
             var chart = chartList[0];
-            var url = GetChartPdfUrl(chart);
+            var url = await GetChartPdfUrl(chart);
             var text = $"  Opening: {TextFormatter.Colorize(chart.ChartName, AnsiColor.Green)}";
             return CommandResult.FromUrl(text, url);
         }
 
         // Multiple results — show numbered list
-        return FormatChartList(airportId, chartList);
+        return await FormatChartList(airportId, chartList);
     }
 
-    private CommandResult FormatChartList(string airportId, List<Charts.Models.Chart> chartList)
+    private async Task<CommandResult> FormatChartList(string airportId, List<Charts.Models.Chart> chartList)
     {
         var sb = new StringBuilder();
         var grouped = chartList.GroupBy(c => c.ChartCode).OrderBy(g => ChartCodeOrder(g.Key));
@@ -102,7 +103,7 @@ public partial class ChartCommand(AviationApiChartService chartService, AirportR
                 var num = TextFormatter.Colorize($"  {index,3})", AnsiColor.Cyan);
                 sb.AppendLine($"{num} {chart.ChartName}");
 
-                var url = GetChartPdfUrl(chart);
+                var url = await GetChartPdfUrl(chart);
                 var name = chart.ChartName;
                 selections[index] = () => Task.FromResult(
                     CommandResult.FromUrl(
@@ -118,8 +119,17 @@ public partial class ChartCommand(AviationApiChartService chartService, AirportR
         return new CommandResult(sb.ToString()) { PendingSelections = selections };
     }
 
-    private static string GetChartPdfUrl(Charts.Models.Chart chart)
-        => $"/api/v1/charts/{Uri.EscapeDataString(chart.IcaoIdent)}/{Uri.EscapeDataString(chart.ChartName)}#view=Fit&zoom=page-fit";
+    private async Task<string> GetChartPdfUrl(Charts.Models.Chart chart)
+    {
+        int? scrollToPage = null;
+        
+        if (chart.ChartCode is "MIN" or "HOT" or "LAH")
+        {
+            scrollToPage = await chartPdfProcessingService.FindPageContainingFaaCode(chart);
+        }
+        
+        return $"{chart.PdfUrl}#view=Fit&zoom=page-fit" + (scrollToPage is not null ? $"&page={scrollToPage}" : string.Empty);
+    }
 
     private static int ChartCodeOrder(string code) => code.ToUpperInvariant() switch
     {

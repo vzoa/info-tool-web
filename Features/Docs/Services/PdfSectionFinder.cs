@@ -25,6 +25,11 @@ public partial class PdfSectionFinder(
             return null;
         }
 
+        return FindPageFromBytes(pdfBytes, sectionQuery);
+    }
+
+    public int? FindPageFromBytes(byte[] pdfBytes, string sectionQuery)
+    {
         return FindPageFromBookmarks(pdfBytes, sectionQuery)
                ?? FindPageFromText(pdfBytes, sectionQuery);
     }
