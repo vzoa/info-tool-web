@@ -192,7 +192,7 @@
                 <div class="pdf-wrapper pt-1 w-full grow bg-slate-950 @(_isDarkMode ? "pdf-container-dark" : "")">
                     <object class="w-full h-full @(_isDarkMode ? "pdf-invert-filter" : "")"
                             type="application/pdf"
-                            data="@GetChartUrlWithFragment(_displayedChart)">
+                            data="@GetChartUrl(_displayedChart)">
                         <div class="p-4">
                             <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
                                target="_blank" class="text-sky-400 underline">
@@ -668,7 +668,7 @@
         }
     }
 
-    private string GetChartUrlWithFragment(Chart chart)
+    private string GetChartUrl(Chart chart)
     {
         return $"{chart.PdfUrl}#view=Fit&zoom=page-fit" + (_scrollToPage is not null ? $"&page={_scrollToPage}" : string.Empty);
     }
