@@ -3,37 +3,31 @@
 @using Microsoft.Extensions.Options
 @using ZoaReference.Features.Charts.Models
 @using ZoaReference.Features.Charts.Services
+@using ZoaReference.Features.Docs.Services
 @rendermode InteractiveServer
 
 @inject AviationApiChartService AviationApiChartService
+@inject ChartPdfProcessingService ChartPdfProcessingService
 @inject StarApproachConnectionService StarApproachConnectionService
 @inject IOptionsMonitor<AppSettings> AppSettings
-@inject ProtectedLocalStorage ProtectedLocalStore
 @inject IJSRuntime Js
-
-@using Microsoft.Extensions.Options
 @inject IOptions<AppSettings> Settings
 
 <PageTitle>Charts - @Settings.Value.ARTCC Reference</PageTitle>
 
 <style>
-    /* The container background behind the PDF */
-    .pdf-container-dark {
-        background-color: #020617 !important;
-    }
-
     /* Target the PDF object specifically */
     .pdf-invert-filter {
         /* This filter inverts the white to black while keeping icons/text relatively crisp */
         filter: invert(90%) hue-rotate(180deg) brightness(1.1) contrast(90%);
-        background-color: #020617 !important;
-        /* Ensure the object fills the container so the filter covers the whole area */
+        /* REMOVE the background-color rule from here */
         display: block;
     }
 
-    /* Force the object container to be dark to prevent "white flash" */
+    /* Force the object container to be light so our filter can invert it reliably */
     object[type="application/pdf"] {
-        background-color: #020617 !important;
+        color-scheme: light !important; 
+        background-color: #ffffff !important; 
     }
 </style>
 
@@ -198,8 +192,7 @@
                 <div class="pdf-wrapper pt-1 w-full grow bg-slate-950 @(_isDarkMode ? "pdf-container-dark" : "")">
                     <object class="w-full h-full @(_isDarkMode ? "pdf-invert-filter" : "")"
                             type="application/pdf"
-                            style="background-color: @(_isDarkMode ? "#020617" : "#ffffff")"                            
-                            data="@(GetChartPdfUrl(_displayedChart) + "#view=Fit&zoom=page-fit")">
+                            data="@GetChartUrl(_displayedChart)">
                         <div class="p-4">
                             <a href="@_displayedChart.Pages.OrderBy(p => p.PageNumber).First().PdfPath"
                                target="_blank" class="text-sky-400 underline">
@@ -218,6 +211,7 @@
     private string _airportId = "";
 
     private Chart? _displayedChart;
+    private int? _scrollToPage;
 
     private OrganizedCharts _organizedCharts = new() { Info = [], Sid = [], Star = [], Approach = [] };
     private readonly List<Airport> _airports = [];
@@ -233,13 +227,14 @@
         public string AirportId { get; set; }
     }
 
-    private const string CustomAirportsSessionStorageKey = "customAirports";
-    private const string ChartStateSessionStorageKey = "chartState";
-    private const string DarkModeSessionStorageKey = "darkMode";
-    private const string AutoDarkModeSessionStorageKey = "autoDarkMode";
+    private const string CustomAirportsStorageKey = "customAirports";
+    private const string ChartStateStorageKey = "chartState";
+    private const string DarkModeStorageKey = "darkMode";
+    private const string AutoDarkModeStorageKey = "autoDarkMode";
 
     private ElementReference _filterInput;
     private string _filterInputText = "";
+    private IJSObjectReference? _storage;
 
     private string _starFixInputText = "";
     private bool _cifpLoading;
@@ -447,15 +442,18 @@
 
         await UpdateCharts(newAirport.Id);
 
-        var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
-        if (savedCustomAirportsTask is { Success: true, Value: not null })
+        if (_storage is not null)
         {
-            savedCustomAirportsTask.Value.Add(new SavedAirport(newAirport.Id, newAirport.Guid));
-            await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, savedCustomAirportsTask.Value);
-        }
-        else
-        {
-            await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, new List<SavedAirport> { new(newAirport.Id, newAirport.Guid) });
+            var savedCustomAirports = await _storage.InvokeAsync<List<SavedAirport>?>("get", CustomAirportsStorageKey);
+            if (savedCustomAirports is not null)
+            {
+                savedCustomAirports.Add(new SavedAirport(newAirport.Id, newAirport.Guid));
+                await _storage.InvokeVoidAsync("set", CustomAirportsStorageKey, savedCustomAirports);
+            }
+            else
+            {
+                await _storage.InvokeVoidAsync("set", CustomAirportsStorageKey, new List<SavedAirport> { new(newAirport.Id, newAirport.Guid) });
+            }
         }
     }
 
@@ -488,11 +486,14 @@
                 await ProtectedLocalStore.DeleteAsync(ChartStateSessionStorageKey);
             }
 
-            var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
-            if (savedCustomAirportsTask is { Success: true, Value: not null })
+            if (_storage is not null)
             {
-                savedCustomAirportsTask.Value.RemoveAll(a => a.Guid == airport.Guid);
-                await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, savedCustomAirportsTask.Value);
+                var savedCustomAirports = await _storage.InvokeAsync<List<SavedAirport>?>("get", CustomAirportsStorageKey);
+                if (savedCustomAirports is not null)
+                {
+                    savedCustomAirports.RemoveAll(a => a.Guid == airport.Guid);
+                    await _storage.InvokeVoidAsync("set", CustomAirportsStorageKey, savedCustomAirports);
+                }
             }
         }
     }
@@ -500,13 +501,19 @@
     private async Task ToggleDarkMode(ChangeEventArgs e)
     {
         _isDarkMode = (bool)(e.Value ?? false);
-        await ProtectedLocalStore.SetAsync(DarkModeSessionStorageKey, _isDarkMode);
+        if (_storage is not null)
+        {
+            await _storage.InvokeVoidAsync("set", DarkModeStorageKey, _isDarkMode);
+        }
     }
 
     private async Task ToggleAutoDarkMode(ChangeEventArgs e)
     {
         _isAutoDarkMode = (bool)(e.Value ?? false);
-        await ProtectedLocalStore.SetAsync(AutoDarkModeSessionStorageKey, _isAutoDarkMode);
+        if (_storage is not null)
+        {
+            await _storage.InvokeVoidAsync("set", AutoDarkModeStorageKey, _isAutoDarkMode);
+        }
         if (_isAutoDarkMode)
         {
             await SyncAutoDarkMode();
@@ -559,34 +566,45 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (!firstRender)
+        {
+            if (_airportInputShown && _airportInputReference?.Element is not null)
+            {
+                await _airportInputReference.Element.Value.FocusAsync();
+            }
+            return;
+        }
+
+        _storage = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/storage.js");
         var stateUpdated = false;
 
-        if (firstRender)
+        var savedCustomAirports = await _storage.InvokeAsync<List<SavedAirport>?>("get", CustomAirportsStorageKey);
+        if (savedCustomAirports is not null)
         {
-            var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
-            if (savedCustomAirportsTask is { Success: true, Value: not null })
-            {
-                var customAirports = savedCustomAirportsTask.Value.Select(a => new Airport(a.Id, AirportType.Other, a.Guid));
-                _airports.AddRange(customAirports);
-                stateUpdated = true;
-            }
+            var customAirports = savedCustomAirports.Select(a => new Airport(a.Id, AirportType.Other, a.Guid));
+            _airports.AddRange(customAirports);
+            stateUpdated = true;
+        }
 
-            var darkModeTask = await ProtectedLocalStore.GetAsync<bool>(DarkModeSessionStorageKey);
-            if (darkModeTask.Success)
-            {
-                _isDarkMode = darkModeTask.Value;
-                stateUpdated = true;
-            }
+        var savedDarkMode = await _storage.InvokeAsync<bool?>("get", DarkModeStorageKey);
+        if (savedDarkMode is not null)
+        {
+            _isDarkMode = savedDarkMode.Value;
+            stateUpdated = true;
+        }
 
-            var autoDarkModeTask = await ProtectedLocalStore.GetAsync<bool>(AutoDarkModeSessionStorageKey);
-            if (autoDarkModeTask.Success)
-            {
-                _isAutoDarkMode = autoDarkModeTask.Value;
-                if (_isAutoDarkMode) await SyncAutoDarkMode();
-                stateUpdated = true;
-            }
+        var savedAutoDarkMode = await _storage.InvokeAsync<bool?>("get", AutoDarkModeStorageKey);
+        if (savedAutoDarkMode is not null)
+        {
+            _isAutoDarkMode = savedAutoDarkMode.Value;
+            if (_isAutoDarkMode) await SyncAutoDarkMode();
+            stateUpdated = true;
+        }
 
-            if (AirportId is null)
+        if (AirportId is null)
+        {
+            var savedState = await _storage.InvokeAsync<ChartState?>("get", ChartStateStorageKey);
+            if (savedState is not null)
             {
                 var savedStateTask = await ProtectedLocalStore.GetAsync<ChartState>(ChartStateSessionStorageKey);
                 if (savedStateTask is { Success: true, Value: not null })
@@ -649,11 +667,23 @@
         }
 
         _displayedChart = chart;
-        await ProtectedLocalStore.SetAsync(ChartStateSessionStorageKey, new ChartState(_airportId, _displayedChart));
+        _scrollToPage = null;
+
+        if (chart.ChartCode is "MIN" or "HOT" or "LAH")
+        {
+            _scrollToPage = await ChartPdfProcessingService.FindPageContainingFaaCode(chart);
+        }
+
+        if (_storage is not null)
+        {
+            await _storage.InvokeVoidAsync("set", ChartStateStorageKey, new ChartState(_airportId, _displayedChart));
+        }
     }
 
-    private static string GetChartPdfUrl(Chart chart)
-        => $"/api/v1/charts/{Uri.EscapeDataString(chart.IcaoIdent)}/{Uri.EscapeDataString(chart.ChartName)}";
+    private string GetChartUrl(Chart chart)
+    {
+        return $"{chart.PdfUrl}#view=Fit&zoom=page-fit" + (_scrollToPage is not null ? $"&page={_scrollToPage}" : string.Empty);
+    }
 
     private async Task ClearFilterInput(bool setFocus = true)
     {

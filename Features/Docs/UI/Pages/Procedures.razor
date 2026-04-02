@@ -1,11 +1,11 @@
-﻿@page "/procedures"
+@page "/procedures"
 @using Microsoft.Extensions.Options
 @using ZoaReference.Features.Docs.Repositories
 @rendermode InteractiveServer
 
 @inject DocumentRepository DocumentRepository
 @inject IOptionsMonitor<AppSettings> AppSettings
-@inject ProtectedSessionStorage ProtectedSessionStore
+@inject IJSRuntime Js
 
 @using Microsoft.Extensions.Options
 @inject IOptions<AppSettings> Settings
@@ -35,32 +35,28 @@
 @code {
 
     private string _displayedPdfUrl = "";
+    private IJSObjectReference? _storage;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
-            try
+            _storage = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/storage.js");
+            var savedUrl = await _storage.InvokeAsync<string?>("get", "proceduresPdfUrl");
+            if (savedUrl is not null)
             {
-                var savedStateTask = await ProtectedSessionStore.GetAsync<string>("proceduresPdfUrl");
-                if (!savedStateTask.Success || savedStateTask.Value is null)
-                {
-                    return;
-                }
-
-                _displayedPdfUrl = savedStateTask.Value;
+                _displayedPdfUrl = savedUrl;
                 StateHasChanged();
-            }
-            catch
-            {
-                // Session storage data may be unreadable (e.g. stale data after server restart)
             }
         }
     }
 
     private async Task UpdateStoredUrl()
     {
-        await ProtectedSessionStore.SetAsync("proceduresPdfUrl", _displayedPdfUrl);
+        if (_storage is not null)
+        {
+            await _storage.InvokeVoidAsync("set", "proceduresPdfUrl", _displayedPdfUrl);
+        }
     }
 
 }

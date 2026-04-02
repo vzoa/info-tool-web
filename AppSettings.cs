@@ -17,6 +17,9 @@ public class AppSettings
     public string ReferenceBindersDirectoryInWwwroot { get; set; } = string.Empty;
     public string DocumentsPdfPath { get; set; } = string.Empty;
 
+    public Dictionary<string, string> AirportAliases { get; set; } = new();
+    public Dictionary<string, string[]> ProcedureAliases { get; set; } = new();
+
     public List<string> NavigationOrder { get; set; } = new();
 
     public List<CustomDocumentCategory> CustomDocuments { get; set; } = [];

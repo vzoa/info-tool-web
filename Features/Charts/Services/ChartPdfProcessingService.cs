@@ -1,10 +1,11 @@
 using System.Security.Cryptography;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
-using PdfSharpCore.Pdf;
-using PdfSharpCore.Pdf.IO;
+using PdfSharp.Pdf;
+using PdfSharp.Pdf.IO;
 using Sentry;
 using ZoaReference.Features.Charts.Models;
+using ZoaReference.Features.Docs.Services;
 
 namespace ZoaReference.Features.Charts.Services;
 
@@ -13,6 +14,7 @@ public class ChartPdfProcessingService(
     IMemoryCache cache,
     ILogger<ChartPdfProcessingService> logger,
     IOptionsMonitor<AppSettings> appSettings,
+    PdfSectionFinder pdfSectionFinder,
     PdfRotationDetector rotationDetector)
 {
     /// <summary>
@@ -84,5 +86,25 @@ public class ChartPdfProcessingService(
                 chart.IcaoIdent);
             return null;
         }
+    }
+
+    public async Task<int?> FindPageContainingFaaCode(Chart chart)
+    {
+        int? scrollToPage = null;
+        try
+        {
+            var processed = await GetProcessedPdf(chart);
+            if (processed is not null)
+            {
+                scrollToPage = pdfSectionFinder.FindPageFromBytes(processed.PdfData, $"({chart.FaaIdent})");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Fallback to the first page
+            SentrySdk.CaptureException(ex);
+        }  
+        
+        return scrollToPage;
     }
 }

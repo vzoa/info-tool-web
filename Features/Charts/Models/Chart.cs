@@ -8,8 +8,9 @@ public class Chart
     public string ChartSeq { get; set; }
     public string ChartCode { get; set; }
     public string ChartName { get; set; }
-    public ICollection<ChartPage> Pages { get; set;}
-    
+    public ICollection<ChartPage> Pages { get; set; }
+    public string PdfUrl => $"/api/v1/charts/{Uri.EscapeDataString(IcaoIdent)}/{Uri.EscapeDataString(ChartName)}";
+
     public static Chart FromAviationApiDto(AviationApiChartDto chartDto, string name = "", int pageNumber = -1)
     {
         return new Chart
@@ -31,7 +32,6 @@ public class Chart
             }
         };
     }
-
 }
 
 public class ChartPage
