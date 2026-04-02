@@ -468,15 +468,13 @@
             if (currentAirportIsCustom)
             {
                 _displayedChart = null;
+                _airportId = "";
                 _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
+
+                await ProtectedLocalStore.DeleteAsync(ChartStateSessionStorageKey);
             }
 
-            var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
-            if (savedCustomAirportsTask is { Success: true, Value: not null })
-            {
-                _airports.RemoveAll(a => a.Type == AirportType.Other);
-                await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, savedCustomAirportsTask.Value);
-            }
+            await ProtectedLocalStore.SetAsync(CustomAirportsSessionStorageKey, new List<SavedAirport>());
         }
         else
         {
@@ -485,6 +483,9 @@
             {
                 _displayedChart = null;
                 _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
+                
+                // ADD THIS: Clear the saved state so it doesn't auto-load on next refresh
+                await ProtectedLocalStore.DeleteAsync(ChartStateSessionStorageKey);
             }
 
             var savedCustomAirportsTask = await ProtectedLocalStore.GetAsync<List<SavedAirport>>(CustomAirportsSessionStorageKey);
@@ -535,25 +536,24 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _airportId = AirportId ?? string.Empty;
-        if (!string.IsNullOrEmpty(_airportId))
-        {
-            await UpdateCharts(_airportId);
-        }
+        // 1. Existing: Load the default ARTCC lists
+        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Bravos) _airports.Add(new Airport(airport, AirportType.Bravo, Guid.NewGuid()));
+        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Charlies) _airports.Add(new Airport(airport, AirportType.Charlie, Guid.NewGuid()));
+        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Deltas) _airports.Add(new Airport(airport, AirportType.Delta, Guid.NewGuid()));
 
-        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Bravos)
+        // 2. Handle the URL parameter
+        if (!string.IsNullOrEmpty(AirportId))
         {
-            _airports.Add(new Airport(airport, AirportType.Bravo, Guid.NewGuid()));
-        }
+            var targetId = AirportId.ToUpper();
+            if (targetId.Length == 3) targetId = "K" + targetId;
 
-        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Charlies)
-        {
-            _airports.Add(new Airport(airport, AirportType.Charlie, Guid.NewGuid()));
-        }
+            // Ensure a tab exists for this airport even if it's not in the default list
+            if (!_airports.Any(a => a.Id == targetId))
+            {
+                _airports.Add(new Airport(targetId, AirportType.Other, Guid.NewGuid()));
+            }
 
-        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Deltas)
-        {
-            _airports.Add(new Airport(airport, AirportType.Delta, Guid.NewGuid()));
+            await UpdateCharts(targetId, setFocus: false);
         }
     }
 
@@ -591,9 +591,12 @@
                 var savedStateTask = await ProtectedLocalStore.GetAsync<ChartState>(ChartStateSessionStorageKey);
                 if (savedStateTask is { Success: true, Value: not null })
                 {
+                    // If the last viewed airport isn't in the list, RE-ADD IT.
+                    if (!_airports.Any(a => a.Id == savedStateTask.Value.AirportId))
+                    {
+                        _airports.Add(new Airport(savedStateTask.Value.AirportId, AirportType.Other, Guid.NewGuid()));
+                    }
                     await UpdateCharts(savedStateTask.Value.AirportId);
-                    _displayedChart = savedStateTask.Value.Chart;
-                    stateUpdated = true;
                 }
             }
         }
@@ -609,12 +612,15 @@
         }
     }
 
-    private async Task UpdateCharts(string id)
+    private async Task UpdateCharts(string id, bool setFocus = true)
     {
         _airportId = id;
         var charts = await AviationApiChartService.GetChartsForId(id);
         _organizedCharts = OrganizeCharts(charts);
-        await ClearFilterInput();
+        
+        // Pass the boolean along
+        await ClearFilterInput(setFocus);
+        
         ClearStarFixInput();
         _ = LoadStarFixSuggestions(id);
     }
@@ -652,6 +658,7 @@
     private async Task ClearFilterInput(bool setFocus = true)
     {
         _filterInputText = "";
+        // This 'if' prevents the crash during prerendering
         if (setFocus)
         {
             await Js.InvokeVoidAsync("SetFocusToId", "filterInput");
