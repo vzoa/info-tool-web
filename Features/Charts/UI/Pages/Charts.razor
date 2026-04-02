@@ -435,25 +435,34 @@
 
     private async Task AirportSubmit()
     {
-        var newAirport = new Airport(_airportForm.AirportId.ToUpper(), AirportType.Other, Guid.NewGuid());
+        if (string.IsNullOrWhiteSpace(_airportForm.AirportId)) return;
+
+        var id = _airportForm.AirportId.ToUpper();
+        if (id.Length == 3) id = "K" + id;
+
+        // Check if it already exists to prevent UI clutter
+        if (_airports.Any(a => a.Id == id))
+        {
+            _airportInputShown = false;
+            await UpdateCharts(id);
+            return;
+        }
+
+        var newAirport = new Airport(id, AirportType.Other, Guid.NewGuid());
         _airports.Add(newAirport);
         _airportInputShown = false;
         _airportForm.AirportId = "";
 
         await UpdateCharts(newAirport.Id);
 
+        // Save to LocalStorage
         if (_storage is not null)
         {
-            var savedCustomAirports = await _storage.InvokeAsync<List<SavedAirport>?>("get", CustomAirportsStorageKey);
-            if (savedCustomAirports is not null)
-            {
-                savedCustomAirports.Add(new SavedAirport(newAirport.Id, newAirport.Guid));
-                await _storage.InvokeVoidAsync("set", CustomAirportsStorageKey, savedCustomAirports);
-            }
-            else
-            {
-                await _storage.InvokeVoidAsync("set", CustomAirportsStorageKey, new List<SavedAirport> { new(newAirport.Id, newAirport.Guid) });
-            }
+            var currentSaved = await _storage.InvokeAsync<List<SavedAirport>?>("get", CustomAirportsStorageKey) 
+                               ?? new List<SavedAirport>();
+            
+            currentSaved.Add(new SavedAirport(newAirport.Id, newAirport.Guid));
+            await _storage.InvokeVoidAsync("set", CustomAirportsStorageKey, currentSaved);
         }
     }
 
@@ -463,16 +472,20 @@
         {
             var currentAirportIsCustom = _airports.Any(a => a.Id == _airportId);
             _airports.RemoveAll(a => a.Type == AirportType.Other);
+            
             if (currentAirportIsCustom)
             {
                 _displayedChart = null;
+                _airportId = "";
                 _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
+
+                // FIX: Use JS storage instead of ProtectedLocalStore
+                if (_storage is not null)
+                    await _storage.InvokeVoidAsync("remove", ChartStateStorageKey);
             }
 
             if (_storage is not null)
-            {
                 await _storage.InvokeVoidAsync("set", CustomAirportsStorageKey, new List<SavedAirport>());
-            }
         }
         else
         {
@@ -481,6 +494,10 @@
             {
                 _displayedChart = null;
                 _organizedCharts = new OrganizedCharts { Info = [], Sid = [], Star = [], Approach = [] };
+                
+                // FIX: Use JS storage instead of ProtectedLocalStore
+                if (_storage is not null)
+                    await _storage.InvokeVoidAsync("remove", ChartStateStorageKey);
             }
 
             if (_storage is not null)
@@ -540,93 +557,99 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _airportId = AirportId ?? string.Empty;
-        if (!string.IsNullOrEmpty(_airportId))
-        {
-            await UpdateCharts(_airportId);
-        }
+        // 1. Existing: Load the default ARTCC lists
+        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Bravos) _airports.Add(new Airport(airport, AirportType.Bravo, Guid.NewGuid()));
+        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Charlies) _airports.Add(new Airport(airport, AirportType.Charlie, Guid.NewGuid()));
+        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Deltas) _airports.Add(new Airport(airport, AirportType.Delta, Guid.NewGuid()));
 
-        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Bravos)
+        // 2. Handle the URL parameter
+        if (!string.IsNullOrEmpty(AirportId))
         {
-            _airports.Add(new Airport(airport, AirportType.Bravo, Guid.NewGuid()));
-        }
+            var targetId = AirportId.ToUpper();
+            if (targetId.Length == 3) targetId = "K" + targetId;
 
-        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Charlies)
-        {
-            _airports.Add(new Airport(airport, AirportType.Charlie, Guid.NewGuid()));
-        }
+            // Ensure a tab exists for this airport even if it's not in the default list
+            if (!_airports.Any(a => a.Id == targetId))
+            {
+                _airports.Add(new Airport(targetId, AirportType.Other, Guid.NewGuid()));
+            }
 
-        foreach (var airport in AppSettings.CurrentValue.ArtccAirports.Deltas)
-        {
-            _airports.Add(new Airport(airport, AirportType.Delta, Guid.NewGuid()));
+            await UpdateCharts(targetId, setFocus: false);
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
-        {
-            if (_airportInputShown && _airportInputReference?.Element is not null)
-            {
-                await _airportInputReference.Element.Value.FocusAsync();
-            }
-            return;
-        }
+        if (!firstRender) return;
 
+        // 1. Initialize JS Module
         _storage = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/storage.js");
-        var stateUpdated = false;
 
+        // 2. Load Custom Airports FIRST
         var savedCustomAirports = await _storage.InvokeAsync<List<SavedAirport>?>("get", CustomAirportsStorageKey);
         if (savedCustomAirports is not null)
         {
-            var customAirports = savedCustomAirports.Select(a => new Airport(a.Id, AirportType.Other, a.Guid));
-            _airports.AddRange(customAirports);
-            stateUpdated = true;
+            foreach (var saved in savedCustomAirports)
+            {
+                // Avoid duplicates if the ID is already in the default lists
+                if (!_airports.Any(a => a.Id == saved.Id))
+                {
+                    _airports.Add(new Airport(saved.Id, AirportType.Other, saved.Guid));
+                }
+            }
         }
 
+        // 3. Load Dark Mode Settings
         var savedDarkMode = await _storage.InvokeAsync<bool?>("get", DarkModeStorageKey);
-        if (savedDarkMode is not null)
-        {
-            _isDarkMode = savedDarkMode.Value;
-            stateUpdated = true;
-        }
+        if (savedDarkMode is not null) _isDarkMode = savedDarkMode.Value;
 
         var savedAutoDarkMode = await _storage.InvokeAsync<bool?>("get", AutoDarkModeStorageKey);
         if (savedAutoDarkMode is not null)
         {
             _isAutoDarkMode = savedAutoDarkMode.Value;
             if (_isAutoDarkMode) await SyncAutoDarkMode();
-            stateUpdated = true;
         }
 
-        if (AirportId is null)
+        // 4. Determine which airport to actually show
+        if (string.IsNullOrEmpty(AirportId))
         {
+            // No URL parameter, check for a saved session
             var savedState = await _storage.InvokeAsync<ChartState?>("get", ChartStateStorageKey);
-            if (savedState is not null)
+            if (savedState is not null && !string.IsNullOrEmpty(savedState.AirportId))
             {
+                // Ensure the saved airport is in our list so the tab shows up
+                if (!_airports.Any(a => a.Id == savedState.AirportId))
+                {
+                    _airports.Add(new Airport(savedState.AirportId, AirportType.Other, Guid.NewGuid()));
+                }
+                
                 await UpdateCharts(savedState.AirportId);
-                _displayedChart = savedState.Chart;
-                stateUpdated = true;
+                if (savedState.Chart is not null)
+                {
+                    _displayedChart = savedState.Chart;
+                }
             }
         }
-
-        if (_airportInputShown && _airportInputReference?.Element is not null)
+        else
         {
-            await _airportInputReference.Element.Value.FocusAsync();
+            // URL parameter exists, OnInitialized already handled the list, 
+            // but let's call UpdateCharts to ensure data is fetched
+            await UpdateCharts(AirportId.ToUpper());
         }
 
-        if (stateUpdated)
-        {
-            StateHasChanged();
-        }
+        // 5. Final UI Refresh
+        StateHasChanged();
     }
 
-    private async Task UpdateCharts(string id)
+    private async Task UpdateCharts(string id, bool setFocus = true)
     {
         _airportId = id;
         var charts = await AviationApiChartService.GetChartsForId(id);
         _organizedCharts = OrganizeCharts(charts);
-        await ClearFilterInput();
+        
+        // Pass the boolean along
+        await ClearFilterInput(setFocus);
+        
         ClearStarFixInput();
         _ = LoadStarFixSuggestions(id);
     }
@@ -676,6 +699,7 @@
     private async Task ClearFilterInput(bool setFocus = true)
     {
         _filterInputText = "";
+        // This 'if' prevents the crash during prerendering
         if (setFocus)
         {
             await Js.InvokeVoidAsync("SetFocusToId", "filterInput");
