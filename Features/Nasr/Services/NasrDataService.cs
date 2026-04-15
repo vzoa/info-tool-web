@@ -1,10 +1,11 @@
 using System.IO.Compression;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using ZoaReference.Features.Nasr.Models;
 
 namespace ZoaReference.Features.Nasr.Services;
 
-public class NasrDataService(
+public partial class NasrDataService(
     ILogger<NasrDataService> logger,
     IHttpClientFactory httpClientFactory,
     IMemoryCache cache)
@@ -58,6 +59,78 @@ public class NasrDataService(
         var navaids = await GetNavaids(ct);
         return navaids.FirstOrDefault(n => n.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
     }
+
+    /// <summary>
+    /// Rewrites chart-name-style inputs that use a navaid identifier into the navaid's
+    /// station name, so fuzzy/substring matching can find the corresponding chart.
+    /// Mirrors the CLI's <c>nasr.py:resolve_navaid_alias</c>.
+    /// </summary>
+    /// <remarks>
+    /// Two patterns are recognized:
+    /// <list type="bullet">
+    /// <item><c>FMG1</c> → <c>MUSTANG1</c> (identifier + single digit)</item>
+    /// <item><c>FMG FIVE</c> → <c>MUSTANG FIVE</c> (identifier + trailing words)</item>
+    /// </list>
+    /// When the leading token is not a known navaid identifier, the input is returned unchanged.
+    /// Only the first word of the navaid's station name is used (e.g. "MUSTANG" from "MUSTANG VORTAC").
+    /// </remarks>
+    public async Task<string> ResolveNavaidAlias(string input, CancellationToken ct = default)
+    {
+        var trimmed = input.Trim();
+        if (trimmed.Length == 0)
+        {
+            return input;
+        }
+
+        // Pattern 1: single token ending in one digit, e.g. "FMG1"
+        var match1 = IdentWithDigitRegex().Match(trimmed);
+        if (match1.Success)
+        {
+            var ident = match1.Groups[1].Value;
+            var digit = match1.Groups[2].Value;
+            var firstWord = await GetNavaidFirstWord(ident, ct);
+            if (firstWord is not null)
+            {
+                return $"{firstWord}{digit}";
+            }
+            return input;
+        }
+
+        // Pattern 2: first token is a navaid identifier, followed by one or more words
+        var spaceIdx = trimmed.IndexOf(' ');
+        if (spaceIdx > 0)
+        {
+            var ident = trimmed[..spaceIdx];
+            var rest = trimmed[(spaceIdx + 1)..];
+            if (IdentOnlyRegex().IsMatch(ident))
+            {
+                var firstWord = await GetNavaidFirstWord(ident, ct);
+                if (firstWord is not null)
+                {
+                    return $"{firstWord} {rest}";
+                }
+            }
+        }
+
+        return input;
+    }
+
+    private async Task<string?> GetNavaidFirstWord(string ident, CancellationToken ct)
+    {
+        var navaid = await GetNavaidById(ident, ct);
+        if (navaid is null || string.IsNullOrWhiteSpace(navaid.Name))
+        {
+            return null;
+        }
+        var spaceIdx = navaid.Name.IndexOf(' ');
+        return spaceIdx < 0 ? navaid.Name : navaid.Name[..spaceIdx];
+    }
+
+    [GeneratedRegex(@"^([A-Z]+)(\d)$")]
+    private static partial Regex IdentWithDigitRegex();
+
+    [GeneratedRegex(@"^[A-Z]+$")]
+    private static partial Regex IdentOnlyRegex();
 
     /// <summary>
     /// Finds a navaid whose station name starts with the given word (as stored in NASR AWY records).

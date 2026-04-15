@@ -2,12 +2,16 @@ using System.Text;
 using System.Text.RegularExpressions;
 using ZoaReference.Features.Charts.Services;
 using ZoaReference.Features.IcaoReference.Repositories;
+using ZoaReference.Features.Nasr.Services;
 using ZoaReference.Features.Terminal.Services;
 
 namespace ZoaReference.Features.Terminal.Commands;
 
-public partial class ChartCommand(AviationApiChartService chartService, AirportRepository airportRepository,
-    ChartPdfProcessingService chartPdfProcessingService) : ITerminalCommand
+public partial class ChartCommand(
+    AviationApiChartService chartService,
+    AirportRepository airportRepository,
+    ChartPdfProcessingService chartPdfProcessingService,
+    NasrDataService nasrDataService) : ITerminalCommand
 {
     private static readonly Dictionary<string, string> DigitToWord = new()
     {
@@ -53,14 +57,10 @@ public partial class ChartCommand(AviationApiChartService chartService, AirportR
         if (args.Positional.Length >= 2)
         {
             var rawFilter = string.Join(" ", args.Positional[1..]);
-            // Expand whole-string aliases (TAXI → AIRPORT DIAGRAM, DVA → DIVERSE
-            // VECTOR AREA) before normalizing runways so shorthand queries work.
-            var aliased = ChartNameAliases.TryGetValue(rawFilter.Trim(), out var substitution)
-                ? substitution
-                : rawFilter;
-            // Pad single-digit runway numbers (e.g. "RNAV 4L" → "RNAV 04L")
-            // so users don't need the leading zero for IAPs.
-            var filter = RunwayFormat.PadSingleDigit(aliased);
+            // Normalize the filter so shorthand queries (TAXI, FMG1, DYAMD5, RNAV 4L)
+            // match real chart names like "AIRPORT DIAGRAM", "MUSTANG ONE",
+            // "DYAMD FIVE", "RNAV (GPS) RWY 04L".
+            var filter = await NormalizeChartQuery(rawFilter);
             var codeFilter = args.Positional[1].ToUpperInvariant();
 
             // Try chart code first (DP, STAR, IAP, APD, etc.)
@@ -155,6 +155,49 @@ public partial class ChartCommand(AviationApiChartService chartService, AirportR
         "IAP" => 3,
         _ => 4
     };
+
+    /// <summary>
+    /// Normalizes a chart search query so shorthand forms match real chart names.
+    /// Mirrors <c>charts.py:_normalize_chart_name</c> in the standalone CLI.
+    /// Steps (in order):
+    ///   1. Whole-string aliases (<c>TAXI</c> → <c>AIRPORT DIAGRAM</c>, <c>DVA</c> → <c>DIVERSE VECTOR AREA</c>).
+    ///   2. Navaid alias resolution (<c>FMG1</c> → <c>MUSTANG1</c>, <c>FMG FIVE</c> → <c>MUSTANG FIVE</c>).
+    ///   3. SID/STAR digit suffix expansion (<c>DYAMD5</c> → <c>DYAMD FIVE</c>, <c>MUSTANG1</c> → <c>MUSTANG ONE</c>).
+    ///   4. Runway zero-padding via <see cref="RunwayFormat.PadSingleDigit"/> so
+    ///      <c>"ILS 4L"</c> matches stored chart names like <c>"ILS OR LOC RWY 04L"</c>.
+    /// </summary>
+    private async Task<string> NormalizeChartQuery(string rawFilter)
+    {
+        var trimmed = rawFilter.Trim();
+        if (trimmed.Length == 0)
+        {
+            return rawFilter;
+        }
+
+        // Step 1: whole-string aliases (check before uppercasing so the dict's
+        // OrdinalIgnoreCase comparer handles the user's original casing).
+        if (ChartNameAliases.TryGetValue(trimmed, out var aliased))
+        {
+            return aliased;
+        }
+
+        // Step 2: navaid alias resolution
+        var upper = trimmed.ToUpperInvariant();
+        var resolved = await nasrDataService.ResolveNavaidAlias(upper);
+
+        // Step 3: single-token IDENT+DIGIT → IDENT + DIGIT_WORD
+        var match = SidStarPatternRegex().Match(resolved);
+        if (match.Success && DigitToWord.TryGetValue(match.Groups[2].Value, out var word))
+        {
+            resolved = $"{match.Groups[1].Value} {word}";
+        }
+
+        // Step 4: pad single-digit runway numbers so "4L" hits "04L" in chart names.
+        return RunwayFormat.PadSingleDigit(resolved);
+    }
+
+    [GeneratedRegex(@"^([A-Z]+)(\d)$")]
+    private static partial Regex SidStarPatternRegex();
 
     /// <summary>
     /// Token-based fuzzy match: splits query like "dyamd5" into alpha+digit parts,
