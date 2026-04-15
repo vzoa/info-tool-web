@@ -27,6 +27,24 @@ public partial class ChartCommand(
         ["DVA"] = "DIVERSE VECTOR AREA",
     };
 
+    // Query tokens that indicate a specific chart type; charts matching the
+    // detected type get a +0.15 score bonus to help break fuzzy-match ties.
+    // Approach-type list mirrors CifpService.ApproachTypeCodes (ILS, LOC, VOR,
+    // RNAV, RNP, GPS, NDB, LDA, SDF, TACAN) plus GLS for GBAS landings.
+    private static readonly HashSet<string> IapTriggers =
+        new(StringComparer.Ordinal)
+        {
+            "ILS", "LOC", "VOR", "RNAV", "RNP", "GPS", "NDB",
+            "GLS", "LDA", "SDF", "TACAN",
+            "APPROACH", "APP",
+        };
+    private static readonly HashSet<string> DpTriggers =
+        new(StringComparer.Ordinal) { "DEPARTURE", "DEP", "SID" };
+    private static readonly HashSet<string> StarTriggers =
+        new(StringComparer.Ordinal) { "ARRIVAL", "ARR", "STAR" };
+    private static readonly HashSet<string> ApdTriggers =
+        new(StringComparer.Ordinal) { "TAXI", "APD", "DIAGRAM" };
+
     public string Name => "chart";
     public string[] Aliases => ["charts"];
     public string Summary => "Look up airport charts";
@@ -53,53 +71,64 @@ public partial class ChartCommand(
 
         var chartList = charts.ToList();
 
-        // Filter by chart code if provided
-        if (args.Positional.Length >= 2)
+        // No filter — list everything for the airport.
+        if (args.Positional.Length < 2)
         {
-            var rawFilter = string.Join(" ", args.Positional[1..]);
-            // Normalize the filter so shorthand queries (TAXI, FMG1, DYAMD5, RNAV 4L)
-            // match real chart names like "AIRPORT DIAGRAM", "MUSTANG ONE",
-            // "DYAMD FIVE", "RNAV (GPS) RWY 04L".
-            var filter = await NormalizeChartQuery(rawFilter);
+            return chartList.Count == 1
+                ? await OpenSingleChart(chartList[0])
+                : await FormatChartList(airportId, chartList);
+        }
+
+        var rawFilter = string.Join(" ", args.Positional[1..]);
+        // Normalize the filter so shorthand queries (TAXI, FMG1, DYAMD5, RNAV 4L)
+        // match real chart names like "AIRPORT DIAGRAM", "MUSTANG ONE",
+        // "DYAMD FIVE", "RNAV (GPS) RWY 04L".
+        var filter = await NormalizeChartQuery(rawFilter);
+
+        // `chart SFO dp` → list all DP charts, no fuzzy match needed.
+        if (args.Positional.Length == 2)
+        {
             var codeFilter = args.Positional[1].ToUpperInvariant();
-
-            // Try chart code first (DP, STAR, IAP, APD, etc.)
-            var codeFiltered = chartList.Where(c =>
-                c.ChartCode.Equals(codeFilter, StringComparison.OrdinalIgnoreCase)).ToList();
-
-            if (codeFiltered.Count > 0 && args.Positional.Length == 2)
+            var codeFiltered = chartList
+                .Where(c => c.ChartCode.Equals(codeFilter, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (codeFiltered.Count > 0)
             {
-                chartList = codeFiltered;
-            }
-            else
-            {
-                // Try exact substring match first
-                var exactMatches = chartList.Where(c =>
-                    c.ChartName.Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
-
-                // Fall back to token-based fuzzy matching
-                chartList = exactMatches.Count > 0
-                    ? exactMatches
-                    : chartList.Where(c => FuzzyMatchChart(filter, c.ChartName)).ToList();
+                return codeFiltered.Count == 1
+                    ? await OpenSingleChart(codeFiltered[0])
+                    : await FormatChartList(airportId, codeFiltered);
             }
         }
 
-        if (chartList.Count == 0)
+        // Score every chart and disambiguate. The best match auto-opens
+        // unless several matches are close in score, in which case we
+        // show a scored picker.
+        var scored = FuzzyMatcher.ScoreAll(
+            filter,
+            chartList,
+            c => c.ChartName,
+            c => ChartTypeBonus(filter, c));
+
+        if (scored.Count == 0)
         {
             return CommandResult.FromError("No charts matched the filter.");
         }
 
-        // Single result — open directly
-        if (chartList.Count == 1)
+        var (best, closeMatches) = FuzzyMatcher.Disambiguate(filter, scored);
+
+        if (best is not null)
         {
-            var chart = chartList[0];
-            var url = await GetChartPdfUrl(chart);
-            var text = $"  Opening: {TextFormatter.Colorize(chart.ChartName, AnsiColor.Green)}";
-            return CommandResult.FromUrl(text, url);
+            return await OpenSingleChart(best.Item);
         }
 
-        // Multiple results — show numbered list
-        return await FormatChartList(airportId, chartList);
+        return await FormatScoredPicker(airportId, closeMatches);
+    }
+
+    private async Task<CommandResult> OpenSingleChart(Charts.Models.Chart chart)
+    {
+        var url = await GetChartPdfUrl(chart);
+        var text = $"  Opening: {TextFormatter.Colorize(chart.ChartName, AnsiColor.Green)}";
+        return CommandResult.FromUrl(text, url);
     }
 
     private async Task<CommandResult> FormatChartList(string airportId, List<Charts.Models.Chart> chartList)
@@ -135,15 +164,53 @@ public partial class ChartCommand(
         return new CommandResult(sb.ToString()) { PendingSelections = selections };
     }
 
+    /// <summary>
+    /// Picker for ambiguous fuzzy results — shows match scores so the user
+    /// can see why each candidate is competing.
+    /// </summary>
+    private async Task<CommandResult> FormatScoredPicker(
+        string airportId,
+        IReadOnlyList<FuzzyMatcher.ScoredMatch<Charts.Models.Chart>> matches)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine(TextFormatter.Colorize("  Multiple close matches — pick one:", AnsiColor.Gray));
+        sb.AppendLine();
+
+        var selections = new Dictionary<int, Func<Task<CommandResult>>>();
+        var index = 1;
+
+        foreach (var match in matches)
+        {
+            var chart = match.Item;
+            var num = TextFormatter.Colorize($"  {index,3})", AnsiColor.Cyan);
+            var code = TextFormatter.Colorize($"[{chart.ChartCode,-4}]", AnsiColor.Yellow);
+            var score = TextFormatter.Colorize($"(score: {match.Score:F2})", AnsiColor.Gray);
+            sb.AppendLine($"{num} {code} {chart.ChartName} {score}");
+
+            var url = await GetChartPdfUrl(chart);
+            var name = chart.ChartName;
+            selections[index] = () => Task.FromResult(
+                CommandResult.FromUrl(
+                    $"  Opening: {TextFormatter.Colorize(name, AnsiColor.Green)}",
+                    url));
+            index++;
+        }
+
+        sb.AppendLine();
+        sb.AppendLine($"  {TextFormatter.Colorize($"{matches.Count} close matches for {airportId}", AnsiColor.Gray)} — enter a number to open");
+
+        return new CommandResult(sb.ToString()) { PendingSelections = selections };
+    }
+
     private async Task<string> GetChartPdfUrl(Charts.Models.Chart chart)
     {
         int? scrollToPage = null;
-        
+
         if (chart.ChartCode is "MIN" or "HOT" or "LAH")
         {
             scrollToPage = await chartPdfProcessingService.FindPageContainingFaaCode(chart);
         }
-        
+
         return $"{chart.PdfUrl}#view=Fit&zoom=page-fit" + (scrollToPage is not null ? $"&page={scrollToPage}" : string.Empty);
     }
 
@@ -174,70 +241,54 @@ public partial class ChartCommand(
             return rawFilter;
         }
 
-        // Step 1: whole-string aliases (check before uppercasing so the dict's
-        // OrdinalIgnoreCase comparer handles the user's original casing).
         if (ChartNameAliases.TryGetValue(trimmed, out var aliased))
         {
             return aliased;
         }
 
-        // Step 2: navaid alias resolution
         var upper = trimmed.ToUpperInvariant();
         var resolved = await nasrDataService.ResolveNavaidAlias(upper);
 
-        // Step 3: single-token IDENT+DIGIT → IDENT + DIGIT_WORD
         var match = SidStarPatternRegex().Match(resolved);
         if (match.Success && DigitToWord.TryGetValue(match.Groups[2].Value, out var word))
         {
             resolved = $"{match.Groups[1].Value} {word}";
         }
 
-        // Step 4: pad single-digit runway numbers so "4L" hits "04L" in chart names.
         return RunwayFormat.PadSingleDigit(resolved);
+    }
+
+    /// <summary>
+    /// Adds a small score bonus to charts whose ChartCode matches the type
+    /// hinted by the query (e.g. "ILS" → IAP, "DEPARTURE" → DP). Helps break
+    /// ambiguous fuzzy-match ties when the user gave us a type hint.
+    /// </summary>
+    private static double ChartTypeBonus(string query, Charts.Models.Chart chart)
+    {
+        var detected = DetectChartType(query);
+        if (detected is null)
+        {
+            return 0;
+        }
+        return chart.ChartCode.Equals(detected, StringComparison.OrdinalIgnoreCase) ? 0.15 : 0;
+    }
+
+    private static string? DetectChartType(string query)
+    {
+        var tokens = FuzzyMatcher.TokenizeRegex()
+            .Matches(query.ToUpperInvariant())
+            .Select(m => m.Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        if (tokens.Overlaps(IapTriggers)) return "IAP";
+        if (tokens.Overlaps(DpTriggers)) return "DP";
+        if (tokens.Overlaps(StarTriggers)) return "STAR";
+        if (tokens.Overlaps(ApdTriggers)) return "APD";
+        return null;
     }
 
     [GeneratedRegex(@"^([A-Z]+)(\d)$")]
     private static partial Regex SidStarPatternRegex();
-
-    /// <summary>
-    /// Token-based fuzzy match: splits query like "dyamd5" into alpha+digit parts,
-    /// expands trailing digits to word form (5→FIVE), and checks if all tokens
-    /// match chart name tokens by prefix or exact match.
-    /// </summary>
-    private static bool FuzzyMatchChart(string query, string chartName)
-    {
-        var queryUpper = query.ToUpperInvariant();
-        var chartUpper = chartName.ToUpperInvariant();
-
-        // Split query into tokens: "dyamd5" → ["DYAMD", "5"], "ils28r" → ["ILS", "28", "R"]
-        var queryTokens = TokenizeRegex().Matches(queryUpper)
-            .Select(m => m.Value).ToList();
-
-        // Expand digit tokens to word equivalents: "5" → also match "FIVE"
-        var expandedQueryTokens = new List<List<string>>();
-        foreach (var token in queryTokens)
-        {
-            var alternatives = new List<string> { token };
-            if (DigitToWord.TryGetValue(token, out var word))
-            {
-                alternatives.Add(word);
-            }
-            expandedQueryTokens.Add(alternatives);
-        }
-
-        var chartTokens = TokenizeRegex().Matches(chartUpper)
-            .Select(m => m.Value).ToList();
-
-        // Every query token (or its digit-word expansion) must match at least one
-        // chart token as a prefix (query token is prefix of chart token)
-        return expandedQueryTokens.All(alternatives =>
-            alternatives.Any(alt =>
-                chartTokens.Any(ct =>
-                    ct.StartsWith(alt, StringComparison.Ordinal))));
-    }
-
-    [GeneratedRegex(@"[A-Z]+|\d+")]
-    private static partial Regex TokenizeRegex();
 
     public IEnumerable<string> GetCompletions(string partial, int argIndex)
     {
