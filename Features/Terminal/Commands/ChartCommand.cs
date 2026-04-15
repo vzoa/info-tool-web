@@ -44,7 +44,9 @@ public partial class ChartCommand(AviationApiChartService chartService, AirportR
         // Filter by chart code if provided
         if (args.Positional.Length >= 2)
         {
-            var filter = string.Join(" ", args.Positional[1..]);
+            // Normalize single-digit runway numbers (e.g. "RNAV 4L" → "RNAV 04L")
+            // so users don't need the leading zero for IAPs.
+            var filter = NormalizeRunwayNumbers(string.Join(" ", args.Positional[1..]));
             var codeFilter = args.Positional[1].ToUpperInvariant();
 
             // Try chart code first (DP, STAR, IAP, APD, etc.)
@@ -179,6 +181,17 @@ public partial class ChartCommand(AviationApiChartService chartService, AirportR
 
     [GeneratedRegex(@"[A-Z]+|\d+")]
     private static partial Regex TokenizeRegex();
+
+    /// <summary>
+    /// Pads single-digit runway numbers with a leading zero so queries like
+    /// "RNAV 4L" match chart names like "RNAV (GPS) RWY 04L". Leaves two-digit
+    /// runways ("28R") and non-runway digits untouched.
+    /// </summary>
+    private static string NormalizeRunwayNumbers(string input) =>
+        SingleDigitRunwayRegex().Replace(input, "0$1");
+
+    [GeneratedRegex(@"\b(\d[LRC]?)\b", RegexOptions.IgnoreCase)]
+    private static partial Regex SingleDigitRunwayRegex();
 
     public IEnumerable<string> GetCompletions(string partial, int argIndex)
     {
