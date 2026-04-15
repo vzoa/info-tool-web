@@ -21,3 +21,12 @@ public record CifpLeg(
     double? Course,
     double? Distance,
     FixRole Role);
+
+/// <summary>
+/// One (airport, procedure, type) tuple returned by a cross-airport CIFP fix
+/// search — e.g. when answering "which procedures contain MYJAW?".
+/// </summary>
+public record CifpFixUsage(
+    string Airport,
+    string ProcedureId,
+    CifpProcedureType Type);

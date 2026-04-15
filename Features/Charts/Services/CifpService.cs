@@ -255,6 +255,112 @@ public partial class CifpService(
             allLegs.OrderBy(x => x.Sequence).Select(x => x.Leg).ToList());
     }
 
+    /// <summary>
+    /// Scans the full CIFP text for every procedure whose leg list contains the
+    /// given fix identifier, optionally filtered by airport (FAA or 4-letter
+    /// ICAO) and/or procedure type. Deduplicates by
+    /// <c>(airport, base procedure id, type)</c> so a procedure with multiple
+    /// legs on the fix appears once. Mirrors <c>cifp.py:find_fix_uses</c>.
+    /// </summary>
+    public async Task<IReadOnlyList<CifpFixUsage>> FindProceduresUsingFix(
+        string fixId,
+        string? airportFilter = null,
+        CifpProcedureType? typeFilter = null,
+        CancellationToken ct = default)
+    {
+        var cifpText = await GetCifpText(ct);
+        if (cifpText is null)
+        {
+            return [];
+        }
+
+        var fixUpper = fixId.ToUpperInvariant().Trim();
+        if (string.IsNullOrEmpty(fixUpper))
+        {
+            return [];
+        }
+
+        string? airportLinePrefix = null;
+        if (!string.IsNullOrEmpty(airportFilter))
+        {
+            var apt = airportFilter.ToUpperInvariant().TrimStart('K');
+            airportLinePrefix = $"SUSAP K{apt}";
+        }
+
+        char? filterChar = typeFilter switch
+        {
+            CifpProcedureType.SID => 'D',
+            CifpProcedureType.STAR => 'E',
+            CifpProcedureType.Approach => 'F',
+            _ => null
+        };
+
+        var results = new List<CifpFixUsage>();
+        var seen = new HashSet<(string, string, CifpProcedureType)>();
+
+        using var reader = new StringReader(cifpText);
+        while (await reader.ReadLineAsync(ct) is { } line)
+        {
+            if (line.Length < 35) continue;
+            if (!line.StartsWith("SUSAP", StringComparison.Ordinal)) continue;
+            if (airportLinePrefix is not null
+                && !line.StartsWith(airportLinePrefix, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var sub = line[12];
+            CifpProcedureType procType;
+            switch (sub)
+            {
+                case 'D': procType = CifpProcedureType.SID; break;
+                case 'E': procType = CifpProcedureType.STAR; break;
+                case 'F': procType = CifpProcedureType.Approach; break;
+                default: continue;
+            }
+
+            if (filterChar is not null && sub != filterChar.Value) continue;
+
+            // Fix identifier is at line[29..34] (5 chars, may be padded).
+            var lineFix = line[29..34].Trim();
+            if (!lineFix.Equals(fixUpper, StringComparison.Ordinal)) continue;
+
+            // Airport code is at line[6..10] — 4 chars of ICAO, strip the K for
+            // mainland US records so callers see 3-letter FAA codes.
+            var airport = line[6..10].Trim().TrimStart('K');
+            if (string.IsNullOrEmpty(airport)) continue;
+
+            // Procedure ID is at line[13..19] (6 chars).
+            var rawProcId = line[13..19].Trim();
+            if (string.IsNullOrEmpty(rawProcId)) continue;
+
+            // Normalize SID/STAR ids to the base form so e.g. "CNDEL54"
+            // (CNDEL5 with an internal leg index) collapses to "CNDEL5".
+            // Approaches keep their full id so "I28R" and "I28L" stay distinct.
+            string baseId;
+            if (sub == 'D' || sub == 'E')
+            {
+                var match = SidStarBaseIdRegex().Match(rawProcId);
+                baseId = match.Success ? match.Groups[1].Value : rawProcId;
+            }
+            else
+            {
+                baseId = rawProcId;
+            }
+
+            var key = (airport, baseId, procType);
+            if (seen.Add(key))
+            {
+                results.Add(new CifpFixUsage(airport, baseId, procType));
+            }
+        }
+
+        return results;
+    }
+
+    [GeneratedRegex(@"^([A-Z]+\d)")]
+    private static partial Regex SidStarBaseIdRegex();
+
     public async Task<Dictionary<string, CifpApproach>> GetApproachesForAirport(
         string airport, CancellationToken ct = default)
     {
