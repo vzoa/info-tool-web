@@ -29,8 +29,15 @@ public partial class ChartCommand(
 
     // Query tokens that indicate a specific chart type; charts matching the
     // detected type get a +0.15 score bonus to help break fuzzy-match ties.
+    // Approach-type list mirrors CifpService.ApproachTypeCodes (ILS, LOC, VOR,
+    // RNAV, RNP, GPS, NDB, LDA, SDF, TACAN) plus GLS for GBAS landings.
     private static readonly HashSet<string> IapTriggers =
-        new(StringComparer.Ordinal) { "ILS", "LOC", "VOR", "RNAV", "GPS", "NDB", "RNP", "APPROACH", "APP" };
+        new(StringComparer.Ordinal)
+        {
+            "ILS", "LOC", "VOR", "RNAV", "RNP", "GPS", "NDB",
+            "GLS", "LDA", "SDF", "TACAN",
+            "APPROACH", "APP",
+        };
     private static readonly HashSet<string> DpTriggers =
         new(StringComparer.Ordinal) { "DEPARTURE", "DEP", "SID" };
     private static readonly HashSet<string> StarTriggers =
