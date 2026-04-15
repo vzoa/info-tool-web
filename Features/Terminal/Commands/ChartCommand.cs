@@ -15,6 +15,14 @@ public partial class ChartCommand(AviationApiChartService chartService, AirportR
         ["5"] = "FIVE", ["6"] = "SIX", ["7"] = "SEVEN", ["8"] = "EIGHT", ["9"] = "NINE",
     };
 
+    // Aliases applied to the whole filter string (e.g. "TAXI" → "AIRPORT DIAGRAM")
+    // so users can type shorthand chart names. Mirrors Python charts.py:_normalize_chart_name.
+    private static readonly Dictionary<string, string> ChartNameAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["TAXI"] = "AIRPORT DIAGRAM",
+        ["DVA"] = "DIVERSE VECTOR AREA",
+    };
+
     public string Name => "chart";
     public string[] Aliases => ["charts"];
     public string Summary => "Look up airport charts";
@@ -44,9 +52,15 @@ public partial class ChartCommand(AviationApiChartService chartService, AirportR
         // Filter by chart code if provided
         if (args.Positional.Length >= 2)
         {
-            // Normalize single-digit runway numbers (e.g. "RNAV 4L" → "RNAV 04L")
+            var rawFilter = string.Join(" ", args.Positional[1..]);
+            // Expand whole-string aliases (TAXI → AIRPORT DIAGRAM, DVA → DIVERSE
+            // VECTOR AREA) before normalizing runways so shorthand queries work.
+            var aliased = ChartNameAliases.TryGetValue(rawFilter.Trim(), out var substitution)
+                ? substitution
+                : rawFilter;
+            // Pad single-digit runway numbers (e.g. "RNAV 4L" → "RNAV 04L")
             // so users don't need the leading zero for IAPs.
-            var filter = NormalizeRunwayNumbers(string.Join(" ", args.Positional[1..]));
+            var filter = RunwayFormat.PadSingleDigit(aliased);
             var codeFilter = args.Positional[1].ToUpperInvariant();
 
             // Try chart code first (DP, STAR, IAP, APD, etc.)
@@ -181,17 +195,6 @@ public partial class ChartCommand(AviationApiChartService chartService, AirportR
 
     [GeneratedRegex(@"[A-Z]+|\d+")]
     private static partial Regex TokenizeRegex();
-
-    /// <summary>
-    /// Pads single-digit runway numbers with a leading zero so queries like
-    /// "RNAV 4L" match chart names like "RNAV (GPS) RWY 04L". Leaves two-digit
-    /// runways ("28R") and non-runway digits untouched.
-    /// </summary>
-    private static string NormalizeRunwayNumbers(string input) =>
-        SingleDigitRunwayRegex().Replace(input, "0$1");
-
-    [GeneratedRegex(@"\b(\d[LRC]?)\b", RegexOptions.IgnoreCase)]
-    private static partial Regex SingleDigitRunwayRegex();
 
     public IEnumerable<string> GetCompletions(string partial, int argIndex)
     {

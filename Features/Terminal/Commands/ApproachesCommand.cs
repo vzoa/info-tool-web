@@ -53,12 +53,14 @@ public class ApproachesCommand(StarApproachConnectionService connectionService, 
             headerLabel = $"Fix {query}";
         }
 
-        // Filter by runways if specified (partial match: "17" matches "17", "17L", "17R")
+        // Filter by runways if specified. RunwayFormat.FilterMatches strips
+        // leading zeros on both sides so "4" catches "04L" / "04R" as well as
+        // "4L" / "4R", and "17" still catches "17", "17L", "17R".
         if (runwayFilters.Count > 0)
         {
             connections = connections
                 .Where(c => c.Runway is not null &&
-                    runwayFilters.Any(f => c.Runway.StartsWith(f, StringComparison.OrdinalIgnoreCase)))
+                    runwayFilters.Any(f => RunwayFormat.FilterMatches(f, c.Runway)))
                 .ToList();
         }
 
