@@ -1,11 +1,14 @@
 ﻿@page "/codes"
 @using ZoaReference.Features.IcaoReference.Models
 @using ZoaReference.Features.IcaoReference.Repositories
+@using ZoaReference.Features.Nasr.Models
+@using ZoaReference.Features.Nasr.Services
 @rendermode InteractiveServer
 
 @inject AirlineRepository Airlines
 @inject AirportRepository Airports
 @inject AircraftTypeRepository AircraftTypes
+@inject NasrDataService NasrData
 
 @using Microsoft.Extensions.Options
 @inject IOptions<AppSettings> Settings
@@ -94,6 +97,31 @@
             <PropertyColumn Property="@(p => p.LandAndHoldShortGroup)" Title="LAHSO" Sortable="true"/>
         </QuickGrid>
     </div>
+
+    <div>
+        <EditForm Model="@_vorForm" OnValidSubmit="@VorSubmit">
+            <DataAnnotationsValidator/>
+            <InputText @bind-Value="_vorForm!.Search"
+                       class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-64"
+                       placeholder="VOR code / name"/>
+            <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search
+                VORs
+            </button>
+            <ValidationMessage For="() => _vorForm.Search"/>
+        </EditForm>
+
+        <QuickGrid Items="@_displayedVors.AsQueryable()">
+            <PropertyColumn Property="@(p => p.Id)" Title="Code" Sortable="true"/>
+            <PropertyColumn Property="@(p => p.Name)" Title="Name" Sortable="true"/>
+            <TemplateColumn TGridItem="NavaidInfo" Title="Location" Sortable="true" SortBy="@_locationSort">
+                @($"{context.City}, {context.State}")
+            </TemplateColumn>
+            <PropertyColumn Property="@(p => p.Frequency)" Title="Frequency" Sortable="true"/>
+            <TemplateColumn TGridItem="NavaidInfo" Title="Coordinates">
+                @($"{context.Latitude:F4}, {context.Longitude:F4}")
+            </TemplateColumn>
+        </QuickGrid>
+    </div>
 </div>
 
 
@@ -102,10 +130,15 @@
     private readonly AirlineForm? _airlineForm = new();
     private readonly AirportForm? _airportForm = new();
     private readonly AircraftForm? _aircraftForm = new();
+    private readonly VorForm? _vorForm = new();
 
     private IEnumerable<Airline> _displayedAirlines = Enumerable.Empty<Airline>();
     private IEnumerable<Airport> _displayedAirports = Enumerable.Empty<Airport>();
     private IEnumerable<AircraftType> _displayedAircraft = Enumerable.Empty<AircraftType>();
+    private IEnumerable<NavaidInfo> _displayedVors = Enumerable.Empty<NavaidInfo>();
+
+    private readonly GridSort<NavaidInfo> _locationSort =
+        GridSort<NavaidInfo>.ByAscending(n => n.State).ThenAscending(n => n.City);
 
     private class AirlineForm
     {
@@ -182,6 +215,16 @@
 
         var trimmed = _aircraftForm.Search.Trim();
         _displayedAircraft = AircraftTypes.AllAircraftTypes.Where(a => TypeDesignatorPredicate(trimmed, a) || ManufacturerPredicate(trimmed, a) || ModelPredicate(trimmed, a));
+    }
+
+    private class VorForm
+    {
+        [Required] public string Search { get; set; } = "";
+    }
+
+    private async Task VorSubmit()
+    {
+        _displayedVors = await NasrData.SearchVors(_vorForm!.Search);
     }
 
 }

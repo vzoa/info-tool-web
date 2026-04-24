@@ -23,6 +23,8 @@ public static class NasrParser
             var type = SafeSubstring(line, 8, 20).Trim();
             var id = SafeSubstring(line, 28, 4).Trim();
             var name = SafeSubstring(line, 42, 30).Trim();
+            var city = SafeSubstring(line, 72, 40).Trim();
+            var state = SafeSubstring(line, 142, 2).Trim();
 
             // Latitude: formatted seconds at position 371, length 14
             var latStr = SafeSubstring(line, 371, 14).Trim();
@@ -35,7 +37,7 @@ public static class NasrParser
 
             if (string.IsNullOrEmpty(id)) continue;
 
-            navaids.Add(new NavaidInfo(id, name, type, frequency, lat, lon, variation));
+            navaids.Add(new NavaidInfo(id, name, type, frequency, lat, lon, variation, city, state));
         }
 
         return navaids;
