@@ -14,6 +14,7 @@ public static class NavItems
         ["videomaps"] = new("/videomaps", "Video Maps"),
         ["procedures"] = new("/procedures", "Procedures"),
         ["scratchpads"] = new("/scratchpads", "Scratchpads"),
+        ["pirep"] = new("/pirep", "PIREP"),
         ["airspaceviz"] = new("/airspaceviz", "Airspace"),
         ["terminal"] = new("/terminal", "Terminal"),
     };
@@ -28,6 +29,7 @@ public static class NavItems
         "videomaps",
         "procedures",
         "scratchpads",
+        "pirep",
         "airspaceviz",
         "terminal"
     ];
