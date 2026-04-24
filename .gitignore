@@ -399,3 +399,9 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 *.idea
+
+# Claude Code MCP server config (per-developer)
+.mcp.json
+
+# Playwright MCP screenshots and traces
+.playwright-mcp/

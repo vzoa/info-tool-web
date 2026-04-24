@@ -15,6 +15,8 @@ public partial class NasrDataService(
     private const string AwyRestrCacheKey = "NasrAirwayRestrictions";
     private const string WaypointCacheKey = "NasrWaypoints";
 
+    private static readonly string[] VorFamilyTypes = ["VOR", "VOR/DME", "VORTAC"];
+
     public async Task<IReadOnlyList<NavaidInfo>> SearchNavaids(string query, CancellationToken ct = default)
     {
         var navaids = await GetNavaids(ct);
@@ -24,6 +26,18 @@ public partial class NasrDataService(
                 n.Id.Contains(q, StringComparison.OrdinalIgnoreCase) ||
                 n.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
                 n.Type.Contains(q, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<NavaidInfo>> SearchVors(string query, CancellationToken ct = default)
+    {
+        var navaids = await GetNavaids(ct);
+        var q = query.Trim();
+        return navaids
+            .Where(n => VorFamilyTypes.Contains(n.Type))
+            .Where(n =>
+                n.Id.Contains(q, StringComparison.OrdinalIgnoreCase) ||
+                n.Name.Contains(q, StringComparison.OrdinalIgnoreCase))
             .ToList();
     }
 

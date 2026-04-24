@@ -7,4 +7,6 @@ public record NavaidInfo(
     string Frequency,
     double Latitude,
     double Longitude,
-    string Variation);
+    string Variation,
+    string City,
+    string State);
