@@ -33,6 +33,7 @@
                 element.focus();
             }
         };
+        window.CopyToClipboard = (text) => navigator.clipboard.writeText(text);
     </script>
     <HeadOutlet/>
     <title>@Settings.Value.ARTCC Reference</title>

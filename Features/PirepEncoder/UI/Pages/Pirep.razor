@@ -1,0 +1,988 @@
+@page "/pirep"
+@rendermode InteractiveServer
+@using System.Globalization
+@using ZoaReference.Features.PirepEncoder.Models
+@using ZoaReference.Features.PirepEncoder.Services
+@using Microsoft.Extensions.Options
+@using PirepRecord = ZoaReference.Features.PirepEncoder.Models.Pirep
+
+@inject IJSRuntime Js
+@inject IOptions<AppSettings> AppSettings
+
+<PageTitle>PIREP - @AppSettings.Value.ARTCC Reference</PageTitle>
+
+<div class="flex flex-col text-s gap-4 max-w-4xl">
+
+    @* Header row *@
+    <div class="flex flex-wrap items-center gap-4 border border-slate-600 p-3 rounded">
+        <div class="flex items-center gap-3">
+            <span class="font-bold">Report</span>
+            <label class="flex items-center gap-1">
+                <input type="radio" name="reportType" class="accent-orange-800"
+                       checked="@(_reportType == ReportType.Routine)"
+                       @onchange="@(() => SetReportType(ReportType.Routine))"/>
+                <span>UA (Routine)</span>
+            </label>
+            <label class="flex items-center gap-1">
+                <input type="radio" name="reportType" class="accent-orange-800"
+                       checked="@(_reportType == ReportType.Urgent)"
+                       @onchange="@(() => SetReportType(ReportType.Urgent))"/>
+                <span>UUA (Urgent)</span>
+            </label>
+        </div>
+        <div class="flex items-center gap-2">
+            <label>SA id</label>
+            <input type="text" maxlength="4"
+                   @bind="_saIdentifier" @bind:event="oninput"
+                   class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-20"
+                   placeholder="(none)"/>
+        </div>
+        <div class="ml-auto">
+            <button type="button" @onclick="@(() => _showSettings = !_showSettings)"
+                    class="rounded bg-slate-700 transition-colors hover:bg-slate-600 p-1 px-2">
+                @(_showSettings ? "Hide settings" : "Settings")
+            </button>
+        </div>
+    </div>
+
+    @* Settings panel (inline disclosure) *@
+    @if (_showSettings)
+    {
+        <div class="border border-slate-600 p-3 rounded flex flex-col gap-2">
+            <div class="font-bold">Defaults (saved in your browser)</div>
+            <div class="flex items-center gap-2">
+                <label class="w-48">Default SA identifier</label>
+                <input type="text" maxlength="4"
+                       @bind="_settingsSaId" @bind:event="oninput" @bind:after="PersistSettings"
+                       class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-20"/>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="w-48">Prefix output with SA id</label>
+                <input type="checkbox" class="accent-orange-800"
+                       @bind="_settingsPrefix" @bind:after="PersistSettings"/>
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="w-48">Default aircraft type</label>
+                <input type="text" maxlength="4"
+                       @bind="_settingsDefaultAircraft" @bind:event="oninput" @bind:after="PersistSettings"
+                       class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-24"/>
+            </div>
+        </div>
+    }
+
+    @* Required fields card *@
+    <div class="border border-slate-600 p-3 rounded flex flex-col gap-3">
+        <div class="font-bold">Required</div>
+
+        @* /OV — Location segments *@
+        <div>
+            <div class="flex items-center gap-2 mb-1">
+                <label class="font-mono w-12">/OV</label>
+                <span class="text-gray-400">Location</span>
+                <button type="button" @onclick="AddLocationSegment"
+                        class="ml-auto rounded bg-orange-900 transition-colors hover:bg-orange-800 p-0.5 px-2">
+                    + Segment
+                </button>
+            </div>
+            @for (var i = 0; i < _locationSegments.Count; i++)
+            {
+                var idx = i;
+                var seg = _locationSegments[idx];
+                <div class="flex items-center gap-2 mb-1 ml-14">
+                    <input type="text" maxlength="3" placeholder="FIX"
+                           value="@seg.Fix"
+                           @oninput="e => UpdateSegmentFix(idx, (string?)e.Value ?? string.Empty)"
+                           class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-20"/>
+                    <input type="text" maxlength="6" placeholder="rrrddd"
+                           value="@seg.RadialDistance"
+                           @oninput="e => UpdateSegmentRadial(idx, (string?)e.Value ?? string.Empty)"
+                           class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-24"/>
+                    @if (_locationSegments.Count > 1)
+                    {
+                        <button type="button" @onclick="@(() => RemoveLocationSegment(idx))"
+                                class="rounded bg-slate-700 transition-colors hover:bg-slate-600 p-0.5 px-2">
+                            Remove
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+
+        @* /TM — Time *@
+        <div class="flex items-center gap-2">
+            <label class="font-mono w-12">/TM</label>
+            <input type="text" maxlength="4" placeholder="hhmm UTC"
+                   @bind="_time" @bind:event="oninput"
+                   class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-24"/>
+            <button type="button" @onclick="FillTimeNow"
+                    class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-0.5 px-2">
+                Now
+            </button>
+        </div>
+
+        @* /FL — Flight Level *@
+        <div class="flex items-center gap-2">
+            <label class="font-mono w-12">/FL</label>
+            <input type="text" maxlength="3" placeholder="hundreds ft"
+                   disabled="@_flightLevelUnknown"
+                   @bind="_flightLevelInput" @bind:event="oninput"
+                   class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-24 disabled:opacity-50"/>
+            <label class="flex items-center gap-1 ml-2">
+                <input type="checkbox" class="accent-orange-800" @bind="_flightLevelUnknown"/>
+                <span>Unknown</span>
+            </label>
+        </div>
+
+        @* /TP — Aircraft Type *@
+        <div class="flex items-center gap-2">
+            <label class="font-mono w-12">/TP</label>
+            <input type="text" maxlength="4" placeholder="B738"
+                   disabled="@_aircraftTypeUnknown"
+                   @bind="_aircraftTypeInput" @bind:event="oninput"
+                   class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-24 disabled:opacity-50"/>
+            <label class="flex items-center gap-1 ml-2">
+                <input type="checkbox" class="accent-orange-800" @bind="_aircraftTypeUnknown"/>
+                <span>Unknown</span>
+            </label>
+        </div>
+    </div>
+
+    @* Optional sections *@
+    <div class="border border-slate-600 p-3 rounded flex flex-col gap-4">
+        <div class="font-bold">Optional</div>
+
+        @* Sky *@
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1">
+                    <input type="checkbox" class="accent-orange-800" @bind="_includeSky"/>
+                    <span class="font-mono">/SK Sky cover</span>
+                </label>
+                @if (_includeSky)
+                {
+                    <div class="ml-4">
+                        @RenderModeToggle(_skyMode, m => _skyMode = m)
+                    </div>
+                }
+            </div>
+            @if (_includeSky)
+            {
+                if (_skyMode == SectionMode.Raw)
+                {
+                    <input type="text" placeholder="e.g. 025 OVC 095/180 OVC"
+                           @bind="_skyRaw" @bind:event="oninput"
+                           class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-full ml-6"/>
+                }
+                else
+                {
+                    <div class="ml-6 flex flex-col gap-1">
+                        @for (var i = 0; i < _skyLayers.Count; i++)
+                        {
+                            var idx = i;
+                            var layer = _skyLayers[idx];
+                            <div class="flex items-center gap-2">
+                                <input type="text" maxlength="3" placeholder="base"
+                                       value="@layer.Base"
+                                       @oninput="e => _skyLayers[idx].Base = ((string?)e.Value ?? string.Empty).ToUpperInvariant()"
+                                       class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-20"/>
+                                <select @bind="layer.Cover"
+                                        class="bg-slate-700 border border-gray-500 p-0.5">
+                                    @foreach (var c in Enum.GetValues<SkyCover>())
+                                    {
+                                        <option value="@c">@c</option>
+                                    }
+                                </select>
+                                <input type="text" maxlength="3" placeholder="tops (opt)"
+                                       value="@layer.Tops"
+                                       @oninput="e => _skyLayers[idx].Tops = (string?)e.Value ?? string.Empty"
+                                       class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-24"/>
+                                @if (_skyLayers.Count > 1)
+                                {
+                                    <button type="button" @onclick="@(() => _skyLayers.RemoveAt(idx))"
+                                            class="rounded bg-slate-700 transition-colors hover:bg-slate-600 p-0.5 px-2">
+                                        Remove
+                                    </button>
+                                }
+                            </div>
+                        }
+                        <div>
+                            <button type="button" @onclick="@(() => _skyLayers.Add(new SkyLayerEditor()))"
+                                    class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-0.5 px-2">
+                                + Layer
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+
+        @* Weather *@
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1">
+                    <input type="checkbox" class="accent-orange-800" @bind="_includeWeather"/>
+                    <span class="font-mono">/WX Weather</span>
+                </label>
+                @if (_includeWeather)
+                {
+                    <div class="ml-4">
+                        @RenderModeToggle(_weatherMode, m => _weatherMode = m)
+                    </div>
+                }
+            </div>
+            @if (_includeWeather)
+            {
+                if (_weatherMode == SectionMode.Raw)
+                {
+                    <input type="text" placeholder="e.g. FV03 R or RA OVC"
+                           @bind="_weatherRaw" @bind:event="oninput"
+                           class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-full ml-6"/>
+                }
+                else
+                {
+                    <div class="ml-6 flex flex-wrap items-center gap-3">
+                        <label class="flex items-center gap-1">
+                            Flight vis (SM):
+                            <input type="number" min="0" max="99"
+                                   @bind="_weatherVisibility" @bind:event="oninput"
+                                   class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-16"/>
+                        </label>
+                        <label class="flex items-center gap-1 flex-1">
+                            Contractions:
+                            <input type="text" placeholder="e.g. RA OVC"
+                                   @bind="_weatherContractions" @bind:event="oninput"
+                                   class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 flex-1"/>
+                        </label>
+                    </div>
+                }
+            }
+        </div>
+
+        @* Temperature *@
+        <div class="flex items-center gap-3">
+            <label class="flex items-center gap-1">
+                <input type="checkbox" class="accent-orange-800" @bind="_includeTemp"/>
+                <span class="font-mono">/TA Temperature (°C)</span>
+            </label>
+            @if (_includeTemp)
+            {
+                <input type="number" min="-99" max="99"
+                       @bind="_tempC" @bind:event="oninput"
+                       class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-20 ml-2"/>
+            }
+        </div>
+
+        @* Wind *@
+        <div class="flex items-center gap-3 flex-wrap">
+            <label class="flex items-center gap-1">
+                <input type="checkbox" class="accent-orange-800" @bind="_includeWind"/>
+                <span class="font-mono">/WV Wind</span>
+            </label>
+            @if (_includeWind)
+            {
+                <label class="flex items-center gap-1 ml-2">
+                    Dir:
+                    <input type="number" min="0" max="360"
+                           @bind="_windDir" @bind:event="oninput"
+                           class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-20"/>
+                </label>
+                <label class="flex items-center gap-1">
+                    Speed (kt):
+                    <input type="number" min="0" max="999"
+                           @bind="_windSpd" @bind:event="oninput"
+                           class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-20"/>
+                </label>
+            }
+        </div>
+
+        @* Turbulence *@
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1">
+                    <input type="checkbox" class="accent-orange-800" @bind="_includeTurbulence"/>
+                    <span class="font-mono">/TB Turbulence</span>
+                </label>
+                @if (_includeTurbulence)
+                {
+                    <div class="ml-4">
+                        @RenderModeToggle(_turbulenceMode, m => _turbulenceMode = m)
+                    </div>
+                }
+            </div>
+            @if (_includeTurbulence)
+            {
+                if (_turbulenceMode == SectionMode.Raw)
+                {
+                    <input type="text" placeholder="e.g. MOD CAT BLO-090"
+                           @bind="_turbulenceRaw" @bind:event="oninput"
+                           class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-full ml-6"/>
+                }
+                else
+                {
+                    <div class="ml-6 flex flex-wrap items-center gap-3">
+                        <select @bind="_turbIntensity" class="bg-slate-700 border border-gray-500 p-0.5">
+                            @foreach (var v in Enum.GetValues<TurbulenceIntensity>())
+                            {
+                                <option value="@v">@TurbulenceFormatter.IntensityCode(v)</option>
+                            }
+                        </select>
+                        <select @bind="_turbType" class="bg-slate-700 border border-gray-500 p-0.5">
+                            @foreach (var v in Enum.GetValues<TurbulenceType>())
+                            {
+                                <option value="@v">@(v == TurbulenceType.None ? "(none)" : v.ToString())</option>
+                            }
+                        </select>
+                        <input type="text" placeholder="altitude band (opt)"
+                               @bind="_turbBand" @bind:event="oninput"
+                               class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-48"/>
+                    </div>
+                }
+            }
+        </div>
+
+        @* Icing *@
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-3">
+                <label class="flex items-center gap-1">
+                    <input type="checkbox" class="accent-orange-800" @bind="_includeIcing"/>
+                    <span class="font-mono">/IC Icing</span>
+                </label>
+                @if (_includeIcing)
+                {
+                    <div class="ml-4">
+                        @RenderModeToggle(_icingMode, m => _icingMode = m)
+                    </div>
+                }
+            </div>
+            @if (_includeIcing)
+            {
+                if (_icingMode == SectionMode.Raw)
+                {
+                    <input type="text" placeholder="e.g. SVR CLR 028-045"
+                           @bind="_icingRaw" @bind:event="oninput"
+                           class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-full ml-6"/>
+                }
+                else
+                {
+                    <div class="ml-6 flex flex-wrap items-center gap-3">
+                        <select @bind="_icingIntensity" class="bg-slate-700 border border-gray-500 p-0.5">
+                            @foreach (var v in Enum.GetValues<IcingIntensity>())
+                            {
+                                <option value="@v">@IcingFormatter.IntensityCode(v)</option>
+                            }
+                        </select>
+                        <select @bind="_icingType" class="bg-slate-700 border border-gray-500 p-0.5">
+                            @foreach (var v in Enum.GetValues<IcingType>())
+                            {
+                                <option value="@v">@(v == IcingType.None ? "(none)" : v.ToString())</option>
+                            }
+                        </select>
+                        <input type="text" placeholder="altitude band (opt)"
+                               @bind="_icingBand" @bind:event="oninput"
+                               class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 w-48"/>
+                    </div>
+                }
+            }
+        </div>
+
+        @* Remarks *@
+        <div class="flex items-center gap-3">
+            <label class="flex items-center gap-1">
+                <input type="checkbox" class="accent-orange-800" @bind="_includeRemarks"/>
+                <span class="font-mono">/RM Remarks</span>
+            </label>
+            @if (_includeRemarks)
+            {
+                <input type="text" placeholder="free text"
+                       @bind="_remarks" @bind:event="oninput"
+                       class="bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 flex-1 ml-2"/>
+            }
+        </div>
+    </div>
+
+    @* Encoded output *@
+    <div class="border border-slate-600 p-3 rounded flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+            <div class="font-bold">Encoded</div>
+            <div class="ml-auto flex items-center gap-2">
+                @if (_copyStatus is not null)
+                {
+                    <span class="text-green-400">@_copyStatus</span>
+                }
+                <button type="button" @onclick="CopyEncoded"
+                        class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 px-2">
+                    Copy
+                </button>
+                <button type="button" @onclick="SaveDraftAsync"
+                        class="rounded bg-slate-700 transition-colors hover:bg-slate-600 p-1 px-2">
+                    Save draft
+                </button>
+                <button type="button" @onclick="ResetForm"
+                        class="rounded bg-slate-700 transition-colors hover:bg-slate-600 p-1 px-2">
+                    Reset
+                </button>
+            </div>
+        </div>
+        <pre class="font-mono bg-slate-900 p-2 rounded whitespace-pre-wrap break-all">@_encoded</pre>
+        @if (_errors.Count > 0)
+        {
+            <ul class="text-orange-600 list-disc list-inside">
+                @foreach (var e in _errors)
+                {
+                    <li>/@e.Field — @e.Message</li>
+                }
+            </ul>
+        }
+    </div>
+
+    @* Decode input *@
+    <div class="border border-slate-600 p-3 rounded flex flex-col gap-2">
+        <div class="font-bold">Decode</div>
+        <textarea rows="2" placeholder="Paste an encoded PIREP here"
+                  @bind="_decodeInput" @bind:event="oninput"
+                  class="font-mono bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-1 w-full"></textarea>
+        <div class="flex items-center gap-2">
+            <button type="button" @onclick="DecodeInput"
+                    class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 px-2">
+                Decode into form
+            </button>
+            @if (_decodeStatus is not null)
+            {
+                <span class="text-gray-400">@_decodeStatus</span>
+            }
+        </div>
+        @if (_decodeWarnings.Count > 0)
+        {
+            <ul class="text-yellow-500 list-disc list-inside">
+                @foreach (var w in _decodeWarnings)
+                {
+                    <li>@(w.Field is null ? "" : $"/{w.Field} — ")@w.Message</li>
+                }
+            </ul>
+        }
+    </div>
+
+    @* Drafts *@
+    @if (_drafts.Count > 0)
+    {
+        <div class="border border-slate-600 p-3 rounded flex flex-col gap-2">
+            <div class="font-bold">Drafts (@_drafts.Count)</div>
+            @foreach (var d in _drafts)
+            {
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-400 w-40">@d.SavedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                    <span class="flex-1 font-mono">@d.Label</span>
+                    <button type="button" @onclick="@(() => LoadDraft(d))"
+                            class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-0.5 px-2">
+                        Load
+                    </button>
+                    <button type="button" @onclick="@(() => DeleteDraftAsync(d.Id))"
+                            class="rounded bg-slate-700 transition-colors hover:bg-slate-600 p-0.5 px-2">
+                        Delete
+                    </button>
+                </div>
+            }
+        </div>
+    }
+
+</div>
+
+@code {
+    // ---------- form state ----------
+    private ReportType _reportType = ReportType.Routine;
+    private string _saIdentifier = "";
+
+    private record SegmentEditor(string Fix, string RadialDistance);
+
+    private List<SegmentEditor> _locationSegments = [new SegmentEditor("", "")];
+
+    private string _time = "";
+
+    private string _flightLevelInput = "";
+    private bool _flightLevelUnknown;
+
+    private string _aircraftTypeInput = "";
+    private bool _aircraftTypeUnknown;
+
+    // Sky
+    private bool _includeSky;
+    private SectionMode _skyMode = SectionMode.Structured;
+    private string _skyRaw = "";
+    private sealed class SkyLayerEditor
+    {
+        public string Base { get; set; } = "";
+        public SkyCover Cover { get; set; } = SkyCover.SKC;
+        public string Tops { get; set; } = "";
+    }
+    private List<SkyLayerEditor> _skyLayers = [new SkyLayerEditor()];
+
+    // Weather
+    private bool _includeWeather;
+    private SectionMode _weatherMode = SectionMode.Structured;
+    private string _weatherRaw = "";
+    private int? _weatherVisibility;
+    private string _weatherContractions = "";
+
+    // Temperature
+    private bool _includeTemp;
+    private int? _tempC;
+
+    // Wind
+    private bool _includeWind;
+    private int? _windDir;
+    private int? _windSpd;
+
+    // Turbulence
+    private bool _includeTurbulence;
+    private SectionMode _turbulenceMode = SectionMode.Structured;
+    private string _turbulenceRaw = "";
+    private TurbulenceIntensity _turbIntensity = TurbulenceIntensity.LGT;
+    private TurbulenceType _turbType = TurbulenceType.None;
+    private string _turbBand = "";
+
+    // Icing
+    private bool _includeIcing;
+    private SectionMode _icingMode = SectionMode.Structured;
+    private string _icingRaw = "";
+    private IcingIntensity _icingIntensity = IcingIntensity.LGT;
+    private IcingType _icingType = IcingType.None;
+    private string _icingBand = "";
+
+    // Remarks
+    private bool _includeRemarks;
+    private string _remarks = "";
+
+    // Decode
+    private string _decodeInput = "";
+    private string? _decodeStatus;
+    private List<ParseWarning> _decodeWarnings = [];
+
+    // Persistent state
+    private bool _showSettings;
+    private string _settingsSaId = "";
+    private bool _settingsPrefix = true;
+    private string _settingsDefaultAircraft = "";
+    private List<DraftEntry> _drafts = [];
+
+    // JS + transient UI
+    private IJSObjectReference? _storage;
+    private string? _copyStatus;
+    private CancellationTokenSource? _copyCts;
+
+    private enum SectionMode { Structured, Raw }
+
+    // ---------- computed ----------
+    private string _encoded => PirepFormatter.Format(BuildPirep(), BuildPirepSettings());
+
+    private IReadOnlyList<ValidationError> _errors => PirepValidator.Validate(BuildPirep());
+
+    private PirepSettings BuildPirepSettings() => new()
+    {
+        DefaultSaIdentifier = string.IsNullOrWhiteSpace(_settingsSaId) ? null : _settingsSaId.Trim().ToUpperInvariant(),
+        PrefixWithSaIdentifier = _settingsPrefix,
+        DefaultAircraftType = string.IsNullOrWhiteSpace(_settingsDefaultAircraft) ? null : _settingsDefaultAircraft.Trim().ToUpperInvariant(),
+    };
+
+    private PirepRecord BuildPirep()
+    {
+        var segments = _locationSegments
+            .Where(s => !string.IsNullOrWhiteSpace(s.Fix))
+            .Select(s => new LocationSegment
+            {
+                Fix = s.Fix.Trim().ToUpperInvariant(),
+                RadialDistance = string.IsNullOrWhiteSpace(s.RadialDistance) ? null : s.RadialDistance.Trim(),
+            })
+            .ToList();
+
+        var flightLevel = _flightLevelUnknown ? "UNKN" : (_flightLevelInput?.Trim().ToUpperInvariant() ?? "");
+        var aircraftType = _aircraftTypeUnknown
+            ? "UNKN"
+            : (string.IsNullOrWhiteSpace(_aircraftTypeInput)
+                ? (_settingsDefaultAircraft?.Trim().ToUpperInvariant() ?? "")
+                : _aircraftTypeInput.Trim().ToUpperInvariant());
+
+        var pirep = new PirepRecord
+        {
+            SaIdentifier = string.IsNullOrWhiteSpace(_saIdentifier) ? null : _saIdentifier.Trim().ToUpperInvariant(),
+            ReportType = _reportType,
+            Location = new Location { Segments = segments },
+            Time = _time?.Trim() ?? "",
+            FlightLevel = string.IsNullOrWhiteSpace(flightLevel) ? "UNKN" : flightLevel,
+            AircraftType = string.IsNullOrWhiteSpace(aircraftType) ? "UNKN" : aircraftType,
+        };
+
+        if (_includeSky)
+        {
+            if (_skyMode == SectionMode.Raw)
+            {
+                pirep = pirep with { SkyCoverRaw = string.IsNullOrWhiteSpace(_skyRaw) ? null : _skyRaw.Trim() };
+            }
+            else
+            {
+                var layers = _skyLayers
+                    .Where(l => !string.IsNullOrWhiteSpace(l.Base))
+                    .Select(l => new CloudLayer
+                    {
+                        Base = l.Base.Trim().ToUpperInvariant(),
+                        Cover = l.Cover,
+                        Tops = string.IsNullOrWhiteSpace(l.Tops) ? null : l.Tops.Trim().ToUpperInvariant(),
+                    })
+                    .ToList();
+                if (layers.Count > 0)
+                {
+                    pirep = pirep with { SkyCover = layers };
+                }
+            }
+        }
+
+        if (_includeWeather)
+        {
+            if (_weatherMode == SectionMode.Raw)
+            {
+                pirep = pirep with { WeatherRaw = string.IsNullOrWhiteSpace(_weatherRaw) ? null : _weatherRaw.Trim() };
+            }
+            else
+            {
+                var contractions = (_weatherContractions ?? "")
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(c => c.ToUpperInvariant())
+                    .ToList();
+                pirep = pirep with
+                {
+                    Weather = new Weather
+                    {
+                        FlightVisibilitySm = _weatherVisibility,
+                        Contractions = contractions,
+                    },
+                };
+            }
+        }
+
+        if (_includeTemp && _tempC is int t) pirep = pirep with { TemperatureC = t };
+        if (_includeWind) pirep = pirep with { WindDirection = _windDir, WindSpeedKt = _windSpd };
+
+        if (_includeTurbulence)
+        {
+            if (_turbulenceMode == SectionMode.Raw)
+            {
+                pirep = pirep with { TurbulenceRaw = string.IsNullOrWhiteSpace(_turbulenceRaw) ? null : _turbulenceRaw.Trim() };
+            }
+            else
+            {
+                pirep = pirep with
+                {
+                    Turbulence = new Turbulence
+                    {
+                        Intensity = _turbIntensity,
+                        Type = _turbType,
+                        AltitudeBand = string.IsNullOrWhiteSpace(_turbBand) ? null : _turbBand.Trim(),
+                    },
+                };
+            }
+        }
+
+        if (_includeIcing)
+        {
+            if (_icingMode == SectionMode.Raw)
+            {
+                pirep = pirep with { IcingRaw = string.IsNullOrWhiteSpace(_icingRaw) ? null : _icingRaw.Trim() };
+            }
+            else
+            {
+                pirep = pirep with
+                {
+                    Icing = new Icing
+                    {
+                        Intensity = _icingIntensity,
+                        Type = _icingType,
+                        AltitudeBand = string.IsNullOrWhiteSpace(_icingBand) ? null : _icingBand.Trim(),
+                    },
+                };
+            }
+        }
+
+        if (_includeRemarks && !string.IsNullOrWhiteSpace(_remarks))
+        {
+            pirep = pirep with { Remarks = _remarks.Trim() };
+        }
+
+        return pirep;
+    }
+
+    // ---------- event handlers ----------
+    private void SetReportType(ReportType rt) => _reportType = rt;
+
+    private void AddLocationSegment() => _locationSegments.Add(new SegmentEditor("", ""));
+
+    private void RemoveLocationSegment(int idx)
+    {
+        if (idx >= 0 && idx < _locationSegments.Count && _locationSegments.Count > 1)
+        {
+            _locationSegments.RemoveAt(idx);
+        }
+    }
+
+    private void UpdateSegmentFix(int idx, string value)
+    {
+        _locationSegments[idx] = _locationSegments[idx] with { Fix = value.ToUpperInvariant() };
+    }
+
+    private void UpdateSegmentRadial(int idx, string value)
+    {
+        _locationSegments[idx] = _locationSegments[idx] with { RadialDistance = value };
+    }
+
+    private void FillTimeNow() => _time = DateTime.UtcNow.ToString("HHmm", CultureInfo.InvariantCulture);
+
+    private RenderFragment RenderModeToggle(SectionMode current, Action<SectionMode> set) => builder =>
+    {
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "class", "inline-flex border border-slate-600 rounded text-xs");
+        var seq = 2;
+        foreach (var mode in new[] { SectionMode.Structured, SectionMode.Raw })
+        {
+            var isActive = current == mode;
+            var capturedMode = mode;
+            builder.OpenElement(seq++, "button");
+            builder.AddAttribute(seq++, "type", "button");
+            builder.AddAttribute(seq++, "class",
+                "px-2 py-0.5 " + (isActive ? "bg-orange-900" : "bg-slate-800 hover:bg-slate-700"));
+            builder.AddAttribute(seq++, "onclick",
+                EventCallback.Factory.Create(this, () => set(capturedMode)));
+            builder.AddContent(seq++, capturedMode == SectionMode.Structured ? "Structured" : "Raw");
+            builder.CloseElement();
+        }
+        builder.CloseElement();
+    };
+
+    // ---------- copy ----------
+    private async Task CopyEncoded()
+    {
+        await Js.InvokeVoidAsync("CopyToClipboard", _encoded);
+        _copyStatus = "Copied!";
+        _copyCts?.Cancel();
+        _copyCts = new CancellationTokenSource();
+        var token = _copyCts.Token;
+        _ = Task.Run(async () =>
+        {
+            try { await Task.Delay(1500, token); }
+            catch (TaskCanceledException) { return; }
+            if (token.IsCancellationRequested) return;
+            _copyStatus = null;
+            await InvokeAsync(StateHasChanged);
+        });
+    }
+
+    // ---------- decode ----------
+    private void DecodeInput()
+    {
+        var result = PirepParser.Parse(_decodeInput ?? "");
+        _decodeWarnings = result.Warnings.ToList();
+        LoadFromPirep(result.Pirep);
+        _decodeStatus = _decodeWarnings.Count == 0
+            ? "Decoded."
+            : $"Decoded with {_decodeWarnings.Count} warning(s).";
+    }
+
+    private void LoadFromPirep(PirepRecord p)
+    {
+        _reportType = p.ReportType;
+        _saIdentifier = p.SaIdentifier ?? "";
+
+        _locationSegments = p.Location.Segments.Count == 0
+            ? [new SegmentEditor("", "")]
+            : p.Location.Segments
+                .Select(s => new SegmentEditor(s.Fix, s.RadialDistance ?? ""))
+                .ToList();
+
+        _time = p.Time;
+        _flightLevelUnknown = p.FlightLevel == "UNKN";
+        _flightLevelInput = _flightLevelUnknown ? "" : p.FlightLevel;
+        _aircraftTypeUnknown = p.AircraftType == "UNKN";
+        _aircraftTypeInput = _aircraftTypeUnknown ? "" : p.AircraftType;
+
+        // Sky
+        _includeSky = p.SkyCover is { Count: > 0 } || !string.IsNullOrWhiteSpace(p.SkyCoverRaw);
+        if (p.SkyCover is { Count: > 0 } skyLayers)
+        {
+            _skyLayers = skyLayers.Select(l => new SkyLayerEditor
+            {
+                Base = l.Base,
+                Cover = l.Cover,
+                Tops = l.Tops ?? "",
+            }).ToList();
+            _skyMode = SectionMode.Structured;
+        }
+        else if (!string.IsNullOrWhiteSpace(p.SkyCoverRaw))
+        {
+            _skyMode = SectionMode.Raw;
+            _skyLayers = [new SkyLayerEditor()];
+        }
+        _skyRaw = p.SkyCoverRaw ?? "";
+
+        // Weather
+        _includeWeather = p.Weather is not null || !string.IsNullOrWhiteSpace(p.WeatherRaw);
+        if (p.Weather is not null)
+        {
+            _weatherVisibility = p.Weather.FlightVisibilitySm;
+            _weatherContractions = string.Join(' ', p.Weather.Contractions);
+            _weatherMode = SectionMode.Structured;
+        }
+        else
+        {
+            _weatherVisibility = null;
+            _weatherContractions = "";
+            if (!string.IsNullOrWhiteSpace(p.WeatherRaw))
+            {
+                _weatherMode = SectionMode.Raw;
+            }
+        }
+        _weatherRaw = p.WeatherRaw ?? "";
+
+        _includeTemp = p.TemperatureC is not null;
+        _tempC = p.TemperatureC;
+
+        _includeWind = p.WindDirection is not null || p.WindSpeedKt is not null;
+        _windDir = p.WindDirection;
+        _windSpd = p.WindSpeedKt;
+
+        // Turbulence
+        _includeTurbulence = p.Turbulence is not null || !string.IsNullOrWhiteSpace(p.TurbulenceRaw);
+        if (p.Turbulence is not null)
+        {
+            _turbIntensity = p.Turbulence.Intensity;
+            _turbType = p.Turbulence.Type;
+            _turbBand = p.Turbulence.AltitudeBand ?? "";
+            _turbulenceMode = SectionMode.Structured;
+        }
+        else if (!string.IsNullOrWhiteSpace(p.TurbulenceRaw))
+        {
+            _turbulenceMode = SectionMode.Raw;
+        }
+        _turbulenceRaw = p.TurbulenceRaw ?? "";
+
+        // Icing
+        _includeIcing = p.Icing is not null || !string.IsNullOrWhiteSpace(p.IcingRaw);
+        if (p.Icing is not null)
+        {
+            _icingIntensity = p.Icing.Intensity;
+            _icingType = p.Icing.Type;
+            _icingBand = p.Icing.AltitudeBand ?? "";
+            _icingMode = SectionMode.Structured;
+        }
+        else if (!string.IsNullOrWhiteSpace(p.IcingRaw))
+        {
+            _icingMode = SectionMode.Raw;
+        }
+        _icingRaw = p.IcingRaw ?? "";
+
+        _includeRemarks = !string.IsNullOrWhiteSpace(p.Remarks);
+        _remarks = p.Remarks ?? "";
+    }
+
+    private void ResetForm()
+    {
+        _reportType = ReportType.Routine;
+        _saIdentifier = "";
+        _locationSegments = [new SegmentEditor("", "")];
+        _time = "";
+        _flightLevelInput = "";
+        _flightLevelUnknown = false;
+        _aircraftTypeInput = "";
+        _aircraftTypeUnknown = false;
+        _includeSky = _includeWeather = _includeTemp = _includeWind =
+            _includeTurbulence = _includeIcing = _includeRemarks = false;
+        _skyMode = _weatherMode = _turbulenceMode = _icingMode = SectionMode.Structured;
+        _skyRaw = _weatherRaw = _turbulenceRaw = _icingRaw = "";
+        _skyLayers = [new SkyLayerEditor()];
+        _weatherVisibility = null;
+        _weatherContractions = "";
+        _tempC = null;
+        _windDir = _windSpd = null;
+        _turbIntensity = TurbulenceIntensity.LGT;
+        _turbType = TurbulenceType.None;
+        _turbBand = "";
+        _icingIntensity = IcingIntensity.LGT;
+        _icingType = IcingType.None;
+        _icingBand = "";
+        _remarks = "";
+        _decodeInput = "";
+        _decodeStatus = null;
+        _decodeWarnings = [];
+    }
+
+    // ---------- drafts (localStorage) ----------
+    private const int MaxDrafts = 50;
+
+    private async Task SaveDraftAsync()
+    {
+        if (_storage is null) return;
+        var pirep = BuildPirep();
+        var entry = new DraftEntry
+        {
+            Pirep = pirep,
+            Label = AutoLabel(pirep),
+        };
+        _drafts.Insert(0, entry);
+        if (_drafts.Count > MaxDrafts) _drafts = _drafts.Take(MaxDrafts).ToList();
+        await _storage.InvokeVoidAsync("set", "pirepDrafts", _drafts);
+    }
+
+    private async Task DeleteDraftAsync(string id)
+    {
+        _drafts = _drafts.Where(d => d.Id != id).ToList();
+        if (_storage is not null)
+        {
+            await _storage.InvokeVoidAsync("set", "pirepDrafts", _drafts);
+        }
+    }
+
+    private void LoadDraft(DraftEntry d) => LoadFromPirep(d.Pirep);
+
+    private static string AutoLabel(PirepRecord pirep)
+    {
+        var fix = pirep.Location.Segments.FirstOrDefault()?.Fix ?? "----";
+        var time = string.IsNullOrWhiteSpace(pirep.Time) ? "----" : pirep.Time;
+        var said = string.IsNullOrWhiteSpace(pirep.SaIdentifier) ? "" : pirep.SaIdentifier + " ";
+        return $"{said}{time} {fix}".Trim();
+    }
+
+    // ---------- settings (localStorage) ----------
+    private sealed record PersistedSettings
+    {
+        public string SaId { get; init; } = "";
+        public bool Prefix { get; init; } = true;
+        public string DefaultAircraft { get; init; } = "";
+    }
+
+    private async Task PersistSettings()
+    {
+        if (_storage is null) return;
+        await _storage.InvokeVoidAsync("set", "pirepSettings", new PersistedSettings
+        {
+            SaId = _settingsSaId,
+            Prefix = _settingsPrefix,
+            DefaultAircraft = _settingsDefaultAircraft,
+        });
+    }
+
+    // ---------- lifecycle ----------
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _storage = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/storage.js");
+
+        var saved = await _storage.InvokeAsync<PersistedSettings?>("get", "pirepSettings");
+        if (saved is not null)
+        {
+            _settingsSaId = saved.SaId ?? "";
+            _settingsPrefix = saved.Prefix;
+            _settingsDefaultAircraft = saved.DefaultAircraft ?? "";
+        }
+
+        var drafts = await _storage.InvokeAsync<List<DraftEntry>?>("get", "pirepDrafts");
+        if (drafts is not null) _drafts = drafts;
+
+        StateHasChanged();
+    }
+}
