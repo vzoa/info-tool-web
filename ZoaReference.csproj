@@ -21,6 +21,7 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.QuickGrid" Version="9.0.0" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.0" />
         <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.5.0" />
         <PackageReference Include="PdfPig" Version="0.1.13" />
         <PackageReference Include="PDFsharp" Version="6.2.4" />
         <PackageReference Include="Sentry.AspNetCore" Version="5.11.2" />
