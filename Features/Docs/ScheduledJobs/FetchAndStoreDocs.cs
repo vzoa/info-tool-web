@@ -5,18 +5,22 @@ using ZoaReference.Features.Docs.Repositories;
 
 namespace ZoaReference.Features.Docs.ScheduledJobs;
 
-public class FetchAndStoreDocs(ILogger<FetchAndStoreDocs> logger, IHttpClientFactory httpClientFactory, IWebHostEnvironment webHostEnvironment, IOptionsMonitor<AppSettings> appSettings, DocumentRepository documentRepository) : IInvocable
+public class FetchAndStoreDocs(
+    ILogger<FetchAndStoreDocs> logger, 
+    HttpClient httpClient, 
+    IWebHostEnvironment webHostEnvironment, 
+    IOptionsMonitor<AppSettings> appSettings, 
+    DocumentRepository documentRepository) : IInvocable
 {
     public async Task Invoke()
     {
-        var client = httpClientFactory.CreateClient();
         List<DocumentCategory> compiledDocCategories = [];
 
         try
         {
             logger.LogInformation("Fetching ZOA docs from {url}",
                 appSettings.CurrentValue.Urls.ZoaDocumentsApiEndpoint);
-            var fetchedDocCategories = await client.GetFromJsonAsync<List<ZoaDocumentCategory>>(appSettings.CurrentValue.Urls.ZoaDocumentsApiEndpoint);
+            var fetchedDocCategories = await httpClient.GetFromJsonAsync<List<ZoaDocumentCategory>>(appSettings.CurrentValue.Urls.ZoaDocumentsApiEndpoint);
             if (fetchedDocCategories is not null)
             {
                 compiledDocCategories.AddRange(fetchedDocCategories.Select(c => c.ToGenericDocumentCategory()));
@@ -75,8 +79,7 @@ public class FetchAndStoreDocs(ILogger<FetchAndStoreDocs> logger, IHttpClientFac
     {
         try
         {
-            var client = httpClientFactory.CreateClient();
-            await using var pdfStream = await client.GetStreamAsync(url);
+            await using var pdfStream = await httpClient.GetStreamAsync(url);
 
             var dirPath = Path.GetDirectoryName(path);
             if (dirPath is not null && !Directory.Exists(dirPath))

@@ -1,6 +1,7 @@
 using Coravel;
 using ZoaReference;
 using ZoaReference.Components;
+using ZoaReference.Features.Docs.ScheduledJobs;
 using ZoaReference.FeatureUtilities;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +22,8 @@ builder.Services.AddRazorComponents()
 builder.Services.Configure<AppSettings>(builder.Configuration.GetSection(AppSettings.SectionKeyName));
 
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient<FetchAndStoreDocs>()
+    .AddStandardResilienceHandler();
 builder.Services.AddMemoryCache();
 
 // Scan for and add services defined in feature modules
