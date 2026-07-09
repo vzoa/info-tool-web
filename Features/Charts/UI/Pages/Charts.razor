@@ -217,6 +217,7 @@
     private readonly List<Airport> _airports = [];
 
     private bool _airportInputShown;
+    private bool _focusAirportInput;
     private readonly AirportForm _airportForm = new();
     private InputText? _airportInputReference;
 
@@ -431,6 +432,7 @@
     {
         if (_airportInputShown) return;
         _airportInputShown = true;
+        _focusAirportInput = true;
     }
 
     private async Task AirportSubmit()
@@ -584,6 +586,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_focusAirportInput)
+        {
+            _focusAirportInput = false;
+            await Js.InvokeVoidAsync("SetFocusToId", "airportInput");
+        }
+
         if (!firstRender) return;
 
         try
@@ -696,13 +704,18 @@
             await SyncAutoDarkMode();
         }
 
-        _displayedChart = chart;
-        _scrollToPage = null;
-
+        // Resolve the target page BEFORE swapping in the new chart so the <object>
+        // renders once with its final URL. Otherwise it first renders without the
+        // page fragment, then the fragment-only URL change fails to reload the PDF
+        // (leaving a blank white viewer) until another chart forces a full reload.
+        int? scrollToPage = null;
         if (chart.ChartCode is "MIN" or "HOT" or "LAH")
         {
-            _scrollToPage = await ChartPdfProcessingService.FindPageContainingFaaCode(chart);
+            scrollToPage = await ChartPdfProcessingService.FindPageContainingFaaCode(chart);
         }
+
+        _scrollToPage = scrollToPage;
+        _displayedChart = chart;
 
         if (_storage is not null)
         {
