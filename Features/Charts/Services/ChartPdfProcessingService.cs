@@ -25,7 +25,14 @@ public class ChartPdfProcessingService(
         Chart chart,
         CancellationToken ct = default)
     {
-        var cacheKey = $"ProcessedPdf:{chart.IcaoIdent}:{chart.ChartName}:{chart.ChartSeq}";
+        // Key on the source PDF identity, not IcaoIdent/ChartSeq. Non-towered airports have
+        // an empty IcaoIdent and share ChartName+ChartSeq (e.g. "TAKEOFF MINIMUMS":10100)
+        // across FAA volumes, so those fields collide (a CA SW-volume PDF would be served for
+        // a NY NE-volume airport). The pdf_name(s) uniquely identify the processed content and
+        // also let airports sharing the same volume PDF reuse one cache entry.
+        var pdfIdentity = string.Join(
+            ",", chart.Pages.OrderBy(p => p.PageNumber).Select(p => p.PdfName));
+        var cacheKey = $"ProcessedPdf:{chart.ChartName}:{pdfIdentity}";
         if (cache.TryGetValue<ProcessedChart>(cacheKey, out var cached))
         {
             return cached;
