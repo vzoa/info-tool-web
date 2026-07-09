@@ -181,6 +181,7 @@
         if (firstRender)
         {
             _storage = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/storage.js");
+            
             if (!string.IsNullOrWhiteSpace(QueryDeparture) && !string.IsNullOrWhiteSpace(QueryDestination))
             {
                 _routeForm.DepartureId = QueryDeparture;
@@ -189,12 +190,13 @@
             }
             else
             {
+                // Pull from storage so the user's previous inputs are visible/pre-filled...
                 var savedState = await _storage.InvokeAsync<SavedAirportPairRoutes?>("get", SavedAirportPairRoutesStorageKey);
                 if (savedState is not null)
                 {
                     _routeForm.DepartureId = savedState.Value.DepartureId;
                     _routeForm.ArrivalId = savedState.Value.ArrivalId;
-                    await RouteSubmit();
+                    // REMOVED: await RouteSubmit(); <-- This stops the automatic API hit on page load
                 }
             }
 
