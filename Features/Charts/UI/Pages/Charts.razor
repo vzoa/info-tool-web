@@ -438,7 +438,7 @@
         if (string.IsNullOrWhiteSpace(_airportForm.AirportId)) return;
 
         var id = _airportForm.AirportId.ToUpper();
-        if (id.Length == 3) id = "K" + id;
+        if (id.Length == 3 && id.All(char.IsLetter)) id = "K" + id;
 
         // Check if it already exists to prevent UI clutter
         if (_airports.Any(a => a.Id == id))
