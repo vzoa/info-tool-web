@@ -568,7 +568,7 @@
         if (!string.IsNullOrEmpty(AirportId))
         {
             var targetId = AirportId.ToUpper();
-            if (targetId.Length == 3) targetId = "K" + targetId;
+            if (targetId.Length == 3 && targetId.All(char.IsLetter)) targetId = "K" + targetId;
 
             // CRITICAL FIX: Set this immediately so the CSS classes match on the first render
             _airportId = targetId;
@@ -645,7 +645,9 @@
                         await UpdateCharts(_airportId);
                         if (savedState.Chart is not null)
                         {
-                            _displayedChart = savedState.Chart;
+                            // Route through UpdateDisplayedChart (not a bare assignment) so the
+                            // scroll-to-page for MIN/HOT/LAH charts is recomputed on refresh.
+                            await UpdateDisplayedChart(savedState.Chart);
                         }
                     }
                 }
@@ -653,9 +655,18 @@
                 {
                     // URL parameter exists, set ID immediately for graphical selection
                     _airportId = AirportId.ToUpper();
-                    if (_airportId.Length == 3) _airportId = "K" + _airportId;
+                    if (_airportId.Length == 3 && _airportId.All(char.IsLetter)) _airportId = "K" + _airportId;
 
                     await UpdateCharts(_airportId);
+
+                    // Restore the previously displayed chart only if the saved session is for
+                    // this same airport, so the scroll-to-page is applied on refresh without
+                    // showing a stale chart when navigating to a different airport by URL.
+                    var savedState = await _storage.InvokeAsync<ChartState?>("get", ChartStateStorageKey);
+                    if (savedState?.Chart is not null && savedState.AirportId == _airportId)
+                    {
+                        await UpdateDisplayedChart(savedState.Chart);
+                    }
                 }
 
                 // 5. Final UI Refresh
