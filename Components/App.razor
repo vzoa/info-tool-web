@@ -33,6 +33,15 @@
                 element.focus();
             }
         };
+        window.SetFocusAndSelectId = (id) => {
+            const element = document.getElementById(id);
+            if (element !== null) {
+                element.focus();
+                if (typeof element.select === "function") {
+                    element.select();
+                }
+            }
+        };
         window.CopyToClipboard = (text) => navigator.clipboard.writeText(text);
     </script>
     <HeadOutlet/>
