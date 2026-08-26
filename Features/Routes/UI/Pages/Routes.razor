@@ -1,4 +1,6 @@
 @page "/routes"
+@using System.Net.Http
+@using System.Text.RegularExpressions
 @using ZoaReference.Features.IcaoReference.Repositories
 @using ZoaReference.Features.Routes.Models
 @using ZoaReference.Features.Routes.Repositories
@@ -13,26 +15,311 @@
 @inject AirportRepository Airports
 @inject IJSRuntime Js
 @inject NavigationManager NavigationManager
+@inject HttpClient Http
 
 @using Microsoft.Extensions.Options
 @inject IOptions<AppSettings> Settings
 
 <PageTitle>Routes - @Settings.Value.ARTCC Reference</PageTitle>
 
+<style>
+    /* NOTE: ::deep only works in a scoped Routes.razor.css file. In an inline
+       style block the rules are global, so plain descendant selectors are used. */
+
+    /* CDR / LOA / Real World tables share one sizing scheme:
+       - width:auto (fit-content) so columns hug their content and the rightmost
+         column (CoordReq / Notes / Altitude) sits just after the Route column
+         instead of drifting to the screen edge on wide monitors. A 100%-wide
+         table would distribute the surplus into the columns, which is exactly
+         the "CoordReq way off to the right" bug.
+       - max-width:100% so the table can never overflow a narrow viewport; when
+         space runs out the Route text wraps (it's the only wrappable content)
+         while the right columns keep their min-widths below. */
+    .cdr-grid table,
+    .loa-grid table,
+    .rw-grid table,
+    .adv-grid table {
+        width: auto;
+        max-width: 100%;
+        table-layout: auto;
+    }
+
+    /* QuickGrid's default theme pads the header's inner elements, not the th itself:
+       .col-header-content gets padding-right: var(--col-gap) (1rem) and .col-title gets
+       0.1rem 0.4rem. Zeroing both reclaims that width and lines header text up with the
+       cell text below it. Applied to all three grids: cross-table column alignment
+       only works if every grid uses identical paddings. */
+    .cdr-grid .col-header-content,
+    .loa-grid .col-header-content,
+    .rw-grid .col-header-content,
+    .adv-grid .col-header-content {
+        padding-right: 0 !important;
+    }
+
+    .cdr-grid .col-title,
+    .loa-grid .col-title,
+    .rw-grid .col-title,
+    .adv-grid .col-title {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    /* Tighten vertical padding and manage column bounds cleanly */
+    .cdr-grid tr,
+    .loa-grid tr,
+    .rw-grid tr,
+    .adv-grid tr {
+        height: auto !important;
+    }
+
+    .cdr-grid td, .cdr-grid th,
+    .loa-grid td, .loa-grid th,
+    .rw-grid td, .rw-grid th,
+    .adv-grid td, .adv-grid th {
+        padding-top: 0.25rem !important;
+        padding-bottom: 0.25rem !important;
+        padding-left: 0.4rem !important;
+        padding-right: 0.4rem !important;
+        vertical-align: top;
+    }
+
+    /* ---- Cross-grid column alignment -------------------------------------
+       Notes / CoordReq / Altitude line up because every grid's columns to the
+       LEFT of them sum to the same total:
+
+           left-column budget (13.5rem) + route column (120ch + 3rem)
+
+       The 3rem covers the copy button + flex gap so a full 120-character route
+       still fits on one line. Per grid:
+         CDR:            code 8rem + fix 5.5rem = 13.5rem -> route 120ch + 3rem
+         LOA:            no left columns                  -> route 120ch + 3rem + 13.5rem
+         RW (main):      freq 4rem                        -> route 120ch + 3rem + 9.5rem
+         RW (flights):   callsign 5.5rem + type 4rem      -> route 120ch + 3rem + 4rem
+
+       These are PREFERRED widths under table-layout:auto -- honored when space
+       allows, compressed when the viewport is narrow. That's the crucial
+       difference from putting width:120ch on the route span itself: an explicit
+       span width sets a hard floor on the cell's minimum size, the table can
+       never shrink below it, and the right columns get shoved past the viewport
+       edge and clipped (the "columns disappear on small windows" bug). */
+    .cdr-grid .cdr-col-code { width: 8rem; }
+    .cdr-grid .cdr-col-fix { width: 5.5rem; }
+    .cdr-grid .cdr-col-route { width: calc(120ch + 3rem); }
+    .loa-grid .loa-col-route { width: calc(120ch + 3rem + 13.5rem); }
+    .rw-grid .rw-col-freq { width: 4rem; }
+    .rw-grid .rw-col-route { width: calc(120ch + 3rem + 9.5rem); }
+    .rw-grid .rw-flights .rw-col-callsign { width: 5.5rem; }
+    .rw-grid .rw-flights .rw-col-type { width: 4rem; }
+    .rw-grid .rw-flights .rw-col-route { width: calc(120ch + 3rem + 4rem); }
+    /* Advanced lookup: callsign 5.5 + type 4 + from 4 + to 4 = 17.5rem of left
+       columns, 4rem over the 13.5rem budget, so Route gives that back to keep
+       the Altitude column aligned with CoordReq/Notes/Altitude above */
+    .adv-grid .adv-col-callsign { width: 5.5rem; }
+    .adv-grid .adv-col-type { width: 4rem; }
+    .adv-grid .adv-col-from { width: 4rem; }
+    .adv-grid .adv-col-to { width: 4rem; }
+    .adv-grid .adv-col-route { width: calc(120ch + 3rem - 4rem); }
+
+    /* Keep the short values on one line so they can't be wrapped into slivers */
+    .cdr-grid .cdr-col-code,
+    .cdr-grid .cdr-col-fix,
+    .cdr-grid .cdr-col-coord,
+    .rw-grid .rw-col-freq,
+    .rw-grid .rw-col-callsign,
+    .rw-grid .rw-col-type,
+    .adv-grid .adv-col-callsign,
+    .adv-grid .adv-col-type,
+    .adv-grid .adv-col-from,
+    .adv-grid .adv-col-to {
+        white-space: nowrap;
+    }
+
+    /* Right columns: 16ch minimum, but free to grow rightward. Left edges align
+       via the budget above; 16ch keeps right edges aligned whenever content is
+       short. nowrap is what enables the growth: it makes longer content (like
+       "MIA EAST, TJ AOB 300") part of the column's minimum size, so the column
+       expands into the free space to its right instead of wrapping at 16ch.
+       Hardened two ways: !important beats any site-wide white-space override,
+       and the :last-child selectors reach the same cells structurally even if
+       the column Class doesn't land on the tds (Notes and CoordReq are each
+       their grid's final column; RNAV sits BEFORE Notes so this stays true).
+       The RW grid is excluded from :last-child on purpose -- its Altitude
+       column is conditional, and when absent Route would be :last-child and
+       must not be nowrap. display:none on CoordReq under 540px doesn't affect
+       this: :last-child matches on DOM position, not visibility. */
+    .cdr-grid .cdr-col-coord,
+    .loa-grid .loa-col-notes,
+    .rw-col-alt,
+    .adv-col-alt,
+    .cdr-grid td:last-child,
+    .cdr-grid th:last-child,
+    .loa-grid td:last-child,
+    .loa-grid th:last-child {
+        min-width: 16ch;
+        white-space: nowrap !important;
+    }
+
+    /* On very narrow viewports (phones), drop the CoordReq column entirely --
+       hiding both th and td removes the whole column and returns its width to
+       Route. 539.98px avoids a 1px band where neither rule applies on hidpi
+       screens. Note: the at-sign is doubled because Razor parses single
+       at-signs even inside style blocks and comments. */
+    @@media (max-width: 539.98px) {
+        .cdr-grid .cdr-col-coord {
+            display: none;
+        }
+    }
+
+    /* LOA RNAV column (renders only for some searches): fixed 8ch, sitting
+       between Route and Notes. When it's present the wrapper carries
+       .loa-has-rnav and the Route column gives up exactly RNAV's footprint
+       (8ch + its 0.8rem cell padding), so Notes stays aligned with
+       CoordReq/Altitude either way. */
+    .loa-grid .loa-col-rnav {
+        width: 8ch;
+        min-width: 8ch;
+        white-space: nowrap;
+    }
+
+    .loa-grid.loa-has-rnav .loa-col-route {
+        width: calc(120ch + 3rem + 13.5rem - 8ch - 0.8rem);
+    }
+
+    /* Route TEXT caps at 120 characters -- longer routes wrap. max-width (not
+       width!) so the cell's minimum size stays small and the table can shrink. */
+    .cdr-grid td.cdr-col-route span,
+    .loa-grid td.loa-col-route span,
+    .rw-grid td.rw-col-route span,
+    .adv-grid td.adv-col-route span {
+        max-width: 120ch;
+    }
+
+    /* Section-move control in the LOA header: a ghost icon instead of a labeled
+       button. Faint until the pointer is anywhere over the LOA panel, full
+       strength when hovering the button itself. Never fully opacity:0 -- it
+       stays discoverable, and touch devices (no hover) can still see and tap
+       it. Focus-visible keeps it usable by keyboard. */
+    .loa-move-btn,
+    .adv-open-btn,
+    .adv-close-btn {
+        opacity: 0.15;
+        transition: opacity 150ms;
+    }
+
+    /* The site's fixed top nav covers content scrolled flush to the viewport top,
+       so give the scroll target a margin: scrollIntoView stops this far short of
+       the top, leaving the section header visible below the nav. Tune the value
+       if the nav height changes (nav is ~60px; the rest is breathing room). */
+    #advanced-route-lookup {
+        scroll-margin-top: 5.5rem;
+    }
+
+    .loa-grid:hover .loa-move-btn,
+    .rw-grid:hover .adv-open-btn,
+    .adv-grid:hover .adv-close-btn,
+    .loa-move-btn:focus-visible,
+    .adv-open-btn:focus-visible,
+    .adv-close-btn:focus-visible {
+        opacity: 0.6;
+    }
+
+    .loa-move-btn:hover,
+    .adv-open-btn:hover,
+    .adv-close-btn:hover {
+        opacity: 1;
+    }
+
+    /* TEC/AAR/ADR: subtle separator line + symmetric padding between rows so
+       multi-option blocks read as distinct sections */
+    .tec-grid table > tbody > tr > td {
+        border-top: 1px solid rgb(51 65 85); /* slate-700 */
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+
+    /* Faint ORIG+DEST prefix in the CDR Route Code column. Done here instead of
+       Tailwind's opacity-25 because utility classes not used elsewhere in the app
+       aren't in the compiled stylesheet and silently do nothing. */
+    .cdr-grid .cdr-code-prefix {
+        opacity: 0.375;
+    }
+
+    /* Valid CDR Destinations: fixed-width grid tracks so the codes align in
+       vertical columns. Track width is sized to a 4-char code ("KWWW") plus a
+       little padding; fixed tracks (no 1fr) keep the pills from stretching.
+       space-between spreads the leftover row space evenly between columns so
+       the first and last columns sit flush with both panel edges. */
+    .cdr-dest-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, 3.5rem);
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+
+    .cdr-dest-grid span,
+    .cdr-dest-grid button {
+        text-align: center;
+    }
+
+    /* Custom tooltip on the destination buttons with a 2s hover delay.
+       The native title attribute can't do this -- its delay is fixed by the
+       browser. The delay lives only on the :hover rule, so the tooltip still
+       hides instantly when the cursor leaves. */
+    .cdr-dest-grid button {
+        position: relative;
+    }
+
+    .cdr-dest-grid button::after {
+        content: "Double-click to search this destination";
+        position: absolute;
+        bottom: calc(100% + 0.35rem);
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgb(15 23 42);   /* slate-900 */
+        border: 1px solid rgb(71 85 105);  /* slate-600 */
+        color: rgb(226 232 240);           /* slate-200 */
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 150ms, visibility 150ms;
+    }
+
+    .cdr-dest-grid button:hover::after {
+        opacity: 1;
+        visibility: visible;
+        transition-delay: 2s;
+    }
+
+    /* Shared vertical padding above the section toggle buttons.
+       One knob so "Show Valid CDR Destinations" and "Show Individual Flights"
+       always match. */
+    .toggle-btn-row {
+        margin-top: 0.5rem;
+    }
+</style>
 
 <div class="flex flex-col text-s gap-8">
     <div>
         <EditForm Model="@_routeForm" OnValidSubmit="@RouteSubmit">
             <DataAnnotationsValidator/>
-            <InputText @bind-Value="_routeForm.DepartureId" id="departureInput"
+            <InputText @bind-Value="_routeForm.DepartureId" id="departureInput" autocomplete="off"
                        class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40"
-                       placeholder="Departure ID"/>
-            <InputText @bind-Value="_routeForm.ArrivalId"
+                       placeholder="Origin"/>
+            <InputText @bind-Value="_routeForm.ArrivalId" autocomplete="off"
                        class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40"
-                       placeholder="Arrival ID"/>
-            <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">Search
-                Routes
+                       placeholder="Destination"/>
+            <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">
+                Search Routes
             </button>
+            <label class="ml-4 inline-flex items-center cursor-pointer select-none">
+                <input type="checkbox" @bind="_showCdrs" @bind:after="PersistShowCdrs" class="form-checkbox h-4 w-4 text-orange-900 rounded bg-transparent border-gray-500 focus:ring-0" />
+                <span class="ml-2">Toggle CDRs</span>
+            </label>
             <ValidationMessage For="() => _routeForm.DepartureId"/>
             <ValidationMessage For="() => _routeForm.ArrivalId"/>
         </EditForm>
@@ -40,7 +327,7 @@
 
     @if (_displayedAliasRouteRules.Any())
     {
-        <div class="border border-slate-600 p-2">
+        <div class="border border-slate-600 p-2 tec-grid">
             <h1 class="text-2xl">TEC/AAR/ADR Routes</h1>
             <QuickGrid Items="@_displayedAliasRouteRules.AsQueryable()">
                 <TemplateColumn Title="Dep Runway">
@@ -66,79 +353,300 @@
                 <TemplateColumn Title="Types">
                     <FormattedAircraftType AircraftTypes="@context.AllowedAircraftTypes"/>
                 </TemplateColumn>
-                <PropertyColumn Property="@(p => p.Route)"/>
+                <TemplateColumn Title="Route">
+                    <div class="flex flex-col gap-1">
+                        @foreach (var option in SplitTecRouteOptions(context.Route))
+                        {
+                            <div class="flex items-start gap-2">
+                                <button type="button"
+                                        @onclick="@(() => CopyToClipboard(option.CopyText))"
+                                        class="p-1 text-gray-300 hover:text-white bg-slate-700 hover:bg-slate-600 border border-slate-500 rounded transition-colors shrink-0 mt-0.5"
+                                        title="Copy Route">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                </button>
+                                <span>@option.Display</span>
+                            </div>
+                        }
+                    </div>
+                </TemplateColumn>
             </QuickGrid>
         </div>
     }
 
     @if (_displayedLoaRules.Any())
     {
-        <div class="border border-slate-600 p-2">
-            <h1 class="text-2xl">LOA Rules</h1>
+        @* Parent is flex-col: order 1 pushes this section visually after Real World
+           Routes (all other sections keep default order 0) without duplicating markup *@
+        <div class="border border-slate-600 p-2 loa-grid @(_displayedLoaRules.Any(r => !r.IsRnavRequired) ? "loa-has-rnav" : null)" style="@(_loaAfterRwRoutes ? "order: 1" : null)">
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl">LOA Routes</h1>
+                @* Section move control, demoted to a ghost icon: nearly invisible
+                   until the LOA panel is hovered, but always present (and therefore
+                   still tappable on touch devices). Arrow points where the section
+                   will GO: down when it's up top, up when it's been moved lower. *@
+                <button type="button"
+                        @onclick="ToggleLoaPosition"
+                        class="loa-move-btn p-1 rounded text-gray-300 hover:text-white hover:bg-slate-700 transition-colors"
+                        title="@(_loaAfterRwRoutes ? "Move this section back above Real World Routes" : "Move this section below Real World Routes")">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                        @if (_loaAfterRwRoutes)
+                        {
+                            <path fill-rule="evenodd" d="M9.47 6.47a.75.75 0 011.06 0l4.25 4.25a.75.75 0 11-1.06 1.06L10 8.06l-3.72 3.72a.75.75 0 01-1.06-1.06l4.25-4.25z" clip-rule="evenodd"/>
+                        }
+                        else
+                        {
+                            <path fill-rule="evenodd" d="M10.53 13.53a.75.75 0 01-1.06 0L5.22 9.28a.75.75 0 011.06-1.06L10 11.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25z" clip-rule="evenodd"/>
+                        }
+                    </svg>
+                </button>
+            </div>
             <QuickGrid Items="@_displayedLoaRules.AsQueryable()">
-                <PropertyColumn Property="@(p => p.Route)" Sortable="true"/>
-                <TemplateColumn Title="RNAV?">
-                    @if (context.IsRnavRequired)
-                    {
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                            <path fill-rule="evenodd"
-                                  d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
-                                  clip-rule="evenodd"/>
-                        </svg>
-                    }
+                <TemplateColumn Title="Route" Class="loa-col-route">
+                    <div class="flex items-start gap-2">
+                        <button type="button"
+                                @onclick="@(() => CopyToClipboard(FormatLoaRouteForCopy(context.Route)))"
+                                class="p-1 text-gray-300 hover:text-white bg-slate-700 hover:bg-slate-600 border border-slate-500 rounded transition-colors shrink-0 mt-0.5"
+                                title="Copy Route">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                        </button>
+                        <span>@context.Route</span>
+                    </div>
                 </TemplateColumn>
-                <PropertyColumn Property="@(p => p.Notes)" Sortable="true"/>
+                @* RNAV renders only for some searches; the loa-has-rnav wrapper class
+                   shrinks the Route column by RNAV's exact footprint so Notes stays
+                   aligned with CoordReq/Altitude whether or not RNAV is shown *@
+                @if (_displayedLoaRules.Any(r => !r.IsRnavRequired))
+                {
+                    <TemplateColumn Title="RNAV" Class="loa-col-rnav">
+                        @if (context.IsRnavRequired)
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                                <path fill-rule="evenodd"
+                                      d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                                      clip-rule="evenodd"/>
+                            </svg>
+                        }
+                    </TemplateColumn>
+                }
+                <PropertyColumn Property="@(p => p.Notes)" Class="loa-col-notes"/>
             </QuickGrid>
+        </div>
+    }
+
+    @if (_showCdrs)
+    {
+        <div class="border border-slate-600 p-2 cdr-grid">
+            <h1 class="text-2xl mb-2">Coded Departure Routes</h1>
+            @if (_isCdrLoading)
+            {
+                <Spinner />
+            }
+            else if (_cdrError)
+            {
+                <p class="text-red-400">Error fetching CDR database.</p>
+            }
+            else
+            {
+                @if (!string.IsNullOrWhiteSpace(_lastSearchedOrigin) && !_validDestinations.Any())
+                {
+                    @* The origin has no CDRs to anywhere *@
+                    <p>No CDRs for @_lastSearchedOrigin exist.</p>
+                }
+                else if (!_displayedCdrs.Any() && !string.IsNullOrWhiteSpace(_lastSearchedOrigin))
+                {
+                    @* The origin has CDRs, just none to this destination; the Valid
+                       CDR Destinations toggle below stays available so the user can
+                       double-click a destination that does have them *@
+                    <p>No CDRs for @_lastSearchedOrigin-@_lastSearchedDest exist.</p>
+                }
+                @if (_displayedCdrs.Any())
+                {
+                    <QuickGrid Items="@_displayedCdrs.AsQueryable()">
+                        <TemplateColumn Title="Route Code" Class="cdr-col-code">
+                            @{
+                                var (prefix, suffix) = GetSplitRouteCode(context.RCode);
+                            }
+                            @if (suffix is not null)
+                            {
+                                <span><span class="cdr-code-prefix">@prefix</span><strong class="font-bold">@suffix</strong></span>
+                            }
+                            else
+                            {
+                                <span>@prefix</span>
+                            }
+                        </TemplateColumn>
+                        <PropertyColumn Property="@(c => c.DepFix)" Title="Fix" Class="cdr-col-fix" />
+                        <TemplateColumn Title="Route" Class="cdr-col-route">
+                            <div class="flex items-start gap-2">
+                                <button type="button" 
+                                        @onclick="@(() => CopyToClipboard(FormatRouteString(context.RouteString, context.Orig, context.Dest)))"
+                                        class="p-1 text-gray-300 hover:text-white bg-slate-700 hover:bg-slate-600 border border-slate-500 rounded transition-colors shrink-0 mt-0.5"
+                                        title="Copy Route">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                </button>
+                                <span>@FormatRouteString(context.RouteString, context.Orig, context.Dest)</span>
+                            </div>
+                        </TemplateColumn>
+                        <TemplateColumn Title="CoordReq" Class="cdr-col-coord">
+                            @if (context.CoordReq.Equals("Y", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                                    <path fill-rule="evenodd"
+                                          d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                                          clip-rule="evenodd"/>
+                                </svg>
+                            }
+                        </TemplateColumn>
+                    </QuickGrid>
+                }
+
+                @if (_validDestinations.Any())
+                {
+                    <div class="toggle-btn-row">
+                        <button type="button" 
+                                @onclick="() => _showValidDestinations = !_showValidDestinations" 
+                                class="rounded bg-slate-700 hover:bg-slate-600 transition-colors p-1.5 text-xs">
+                            @(_showValidDestinations ? "Hide Valid CDR Destinations" : "Show Valid CDR Destinations")
+                        </button>
+
+                        @if (_showValidDestinations)
+                        {
+                            <div class="mt-2 p-2 bg-slate-900 border border-slate-700 rounded">
+                                <p class="font-bold text-xs mb-1">Valid CDR Destinations (@_validDestinations.Count):</p>
+                                <div class="cdr-dest-grid text-xs">
+                                    @foreach (var dest in _validDestinations)
+                                    {
+                                        <button type="button"
+                                                @ondblclick="@(() => SelectCdrDestination(dest))"
+                                                class="bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700 hover:bg-slate-600 transition-colors cursor-pointer select-none">@dest</button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
         </div>
     }
 
     @if (_showRwRoutesLoading || _displayedRwRoutes is not null)
     {
-        <div class="border border-slate-600 p-2">
-            <h1 class="text-2xl">Real World Routes</h1>
+        <div class="border border-slate-600 p-2 rw-grid">
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl">Real World Routes</h1>
+                @if (!_showAdvancedLookup)
+                {
+                    <button type="button"
+                            @onclick="() => _showAdvancedLookup = true"
+                            title="Open Advanced Route Lookup"
+                            class="adv-open-btn p-1 rounded text-gray-300 hover:text-white hover:bg-slate-700 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                            <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z"/>
+                        </svg>
+                    </button>
+                }
+            </div>
             @if (_showRwRoutesLoading)
             {
                 <Spinner/>
             }
             else if (_displayedRwRoutes is not null)
             {
-                <QuickGrid Items="@_displayedRwRoutes.FlightRouteSummaries.AsQueryable()">
-                    <PropertyColumn Property="@(p => p.RouteFrequency)" Title="Freq"/>
-                    <PropertyColumn Property="@(p => p.Route)" Title="Route"/>
-                    <TemplateColumn Title="Altitude">
-                        @switch (context.MinAltitude)
-                        {
-                            case null when context.MaxAltitude is null:
-                                <span></span>
-                                break;
-                            case null:
-                                <span>@ToFlightLevel(context.MaxAltitude)</span>
-                                break;
-                            default:
+                <QuickGrid Items="@GetFilteredRwRoutes().AsQueryable()">
+                    <PropertyColumn Property="@(p => p.RouteFrequency)" Title="Freq" Class="rw-col-freq"/>
+                    <TemplateColumn Title="Route" Class="rw-col-route">
+                        <div class="flex items-start gap-2">
+                            <button type="button"
+                                    @onclick="@(() => CopyToClipboard(context.Route))"
+                                    class="p-1 text-gray-300 hover:text-white bg-slate-700 hover:bg-slate-600 border border-slate-500 rounded transition-colors shrink-0 mt-0.5"
+                                    title="Copy Route">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                            </button>
+                            <span>@context.Route</span>
+                        </div>
+                    </TemplateColumn>
+                    @* Altitude only renders when a currently-displayed route has one, so it
+                       appears/disappears as the infrequent-routes toggle changes the set *@
+                    @if (GetFilteredRwRoutes().Any(s => s.MinAltitude is not null || s.MaxAltitude is not null))
+                    {
+                        <TemplateColumn Title="Altitude" Class="rw-col-alt">
+                            @switch (context.MinAltitude)
                             {
-                                if (context.MaxAltitude is null)
+                                case null when context.MaxAltitude is null:
+                                    <span></span>
+                                    break;
+                                case null:
+                                    <span>@ToFlightLevel(context.MaxAltitude)</span>
+                                    break;
+                                default:
                                 {
-                                    <span>@ToFlightLevel(context.MinAltitude)</span>
-                                }
-                                else
-                                {
-                                    <span>@ToFlightLevel(context.MinAltitude) - @ToFlightLevel(context.MaxAltitude)</span>
-                                }
+                                    if (context.MaxAltitude is null)
+                                    {
+                                        <span>@ToFlightLevel(context.MinAltitude)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@ToFlightLevel(context.MinAltitude) - @ToFlightLevel(context.MaxAltitude)</span>
+                                    }
 
-                                break;
+                                    break;
+                                }
                             }
-                        }
-                    </TemplateColumn>
+                        </TemplateColumn>
+                    }
                 </QuickGrid>
 
-                <QuickGrid Items="@_displayedRwRoutes.MostRecent.AsQueryable()">
-                    <PropertyColumn Property="@(p => p.Callsign)"/>
-                    <PropertyColumn Property="@(p => p.AircraftIcaoId)" Title="Type"/>
-                    <PropertyColumn Property="@(p => p.Route)"/>
-                    <TemplateColumn Title="Altitude">
-                        <span>@ToFlightLevel(context.Altitude)</span>
-                    </TemplateColumn>
-                </QuickGrid>
+                <div class="toggle-btn-row">
+                    <div class="flex gap-2">
+                        <button type="button"
+                                @onclick="() => _showIndividualFlights = !_showIndividualFlights"
+                                class="rounded bg-slate-700 hover:bg-slate-600 transition-colors p-1.5 text-xs">
+                            @(_showIndividualFlights ? "Hide Individual Flights" : "Show Individual Flights")
+                        </button>
+                        <button type="button"
+                                @onclick="() => _showInfrequentRoutes = !_showInfrequentRoutes"
+                                class="rounded bg-slate-700 hover:bg-slate-600 transition-colors p-1.5 text-xs">
+                            @(_showInfrequentRoutes ? "Hide Infrequent Routes" : $"Show Infrequent Routes ({InfrequentRouteCount})")
+                        </button>
+                    </div>
+
+                    @if (_showIndividualFlights)
+                    {
+                        <div class="mt-2 rw-flights">
+                            <QuickGrid Items="@_displayedRwRoutes.MostRecent.AsQueryable()">
+                                <PropertyColumn Property="@(p => p.Callsign)" Class="rw-col-callsign"/>
+                                <PropertyColumn Property="@(p => p.AircraftIcaoId)" Title="Type" Class="rw-col-type"/>
+                                <TemplateColumn Title="Route" Class="rw-col-route">
+                                    <div class="flex items-start gap-2">
+                                        <button type="button"
+                                                @onclick="@(() => CopyToClipboard(context.Route))"
+                                                class="p-1 text-gray-300 hover:text-white bg-slate-700 hover:bg-slate-600 border border-slate-500 rounded transition-colors shrink-0 mt-0.5"
+                                                title="Copy Route">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                        </button>
+                                        <span>@context.Route</span>
+                                    </div>
+                                </TemplateColumn>
+                                @if (_displayedRwRoutes.MostRecent.Any(f => f.Altitude is not null))
+                                {
+                                    <TemplateColumn Title="Altitude" Class="rw-col-alt">
+                                        <span>@ToFlightLevel(context.Altitude)</span>
+                                    </TemplateColumn>
+                                }
+                            </QuickGrid>
+                        </div>
+                    }
+                </div>
             }
             else if (_isRwRoutesError)
             {
@@ -149,15 +657,93 @@
         </div>
     }
 
-    @* @if (!string.IsNullOrEmpty(_routeForm.DepartureId) && !string.IsNullOrEmpty(_routeForm.ArrivalId)) *@
-    @* { *@
-    @*     <div class="border border-slate-600 p-2"> *@
-    @*         <h1 class="text-2xl">Real World Routes</h1> *@
-    @*         <p>View on <a target="_blank" href="@FlightAware.MakeUrl(_routeForm.DepartureId, _routeForm.ArrivalId)" *@
-    @*                       class="underline">FlightAware</a>.</p> *@
-    @*     </div> *@
-    @* } *@
+    @if (_showAdvancedLookup)
+    {
+        <div id="advanced-route-lookup" class="border border-slate-600 p-2 adv-grid">
+            <div class="flex items-center justify-between">
+                <h1 class="text-2xl">Advanced Route Lookup</h1>
+                <button type="button"
+                        @onclick="() => _showAdvancedLookup = false"
+                        title="Hide Advanced Route Lookup"
+                        class="adv-close-btn p-1 rounded text-gray-300 hover:text-white hover:bg-slate-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                        <path fill-rule="evenodd" d="M4 10a.75.75 0 0 1 .75-.75h10.5a.75.75 0 0 1 0 1.5H4.75A.75.75 0 0 1 4 10Z" clip-rule="evenodd"/>
+                    </svg>
+                </button>
+            </div>
+            <EditForm Model="@_advForm" OnValidSubmit="@AdvancedSearchSubmit">
+                <InputText @bind-Value="_advForm.Origin" autocomplete="off"
+                           class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40"
+                           placeholder="Origin"/>
+                <InputText @bind-Value="_advForm.Destination" autocomplete="off"
+                           class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40"
+                           placeholder="Destination"/>
+                <InputText @bind-Value="_advForm.Waypoint" autocomplete="off"
+                           class="uppercase bg-transparent border border-gray-500 focus:outline-none focus:bg-gray-700 p-0.5 mb-2 ml-1 w-40"
+                           placeholder="Waypoint"/>
+                <button type="submit" class="rounded bg-orange-900 transition-colors hover:bg-orange-800 p-1 ml-3">
+                    Search Flight Plans
+                </button>
+                @if (_advResults is not null && AdvSliderMax > 5)
+                {
+                    <span class="inline-flex items-center gap-2 ml-4 text-xs select-none align-middle">
+                        <span>Show:</span>
+                        <input type="range" min="5" max="@AdvSliderMax" step="5"
+                               @bind="_advDisplayCount" @bind:event="oninput" @bind:after="OnAdvSliderChanged"
+                               class="w-48 accent-orange-900 cursor-pointer"/>
+                        <span>@AdvDisplayedResults.Count() of @_advResults.Count</span>
+                    </span>
+                }
+            </EditForm>
 
+            @if (_advError is not null)
+            {
+                <p class="text-red-400">@_advError</p>
+            }
+            @if (_advLoading)
+            {
+                <Spinner/>
+            }
+            else if (_advResults is not null)
+            {
+                @if (!_advResults.Any())
+                {
+                    <p>No flight plans found.</p>
+                }
+                else
+                {
+                    <QuickGrid Items="@AdvDisplayedResults.AsQueryable()">
+                        <PropertyColumn Property="@(p => p.AircraftId)" Title="Callsign" Class="adv-col-callsign"/>
+                        <PropertyColumn Property="@(p => p.AircraftType)" Title="Type" Class="adv-col-type"/>
+                        <PropertyColumn Property="@(p => p.Departure)" Title="From" Class="adv-col-from"/>
+                        <PropertyColumn Property="@(p => p.Arrival)" Title="To" Class="adv-col-to"/>
+                        <TemplateColumn Title="Route" Class="adv-col-route">
+                            @{
+                                var formattedRoute = FormatSearchRoute(context.DisplayRoute, context.Departure, context.Arrival);
+                            }
+                            <div class="flex items-start gap-2">
+                                <button type="button"
+                                        @onclick="@(() => CopyToClipboard(formattedRoute))"
+                                        class="p-1 text-gray-300 hover:text-white bg-slate-700 hover:bg-slate-600 border border-slate-500 rounded transition-colors shrink-0 mt-0.5"
+                                        title="Copy Route">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                    </svg>
+                                </button>
+                                <span>@formattedRoute</span>
+                            </div>
+                        </TemplateColumn>
+                        @if (_advResults.Any(f => f.AssignedAltitude is not null))
+                        {
+                            <TemplateColumn Title="Altitude" Class="adv-col-alt">
+                                <span>@ToFlightLevel(context.AssignedAltitude)</span>
+                            </TemplateColumn>
+                        }
+                    </QuickGrid>
+                }
+            }
+        </div>
+    }
 </div>
 
 @code {
@@ -174,13 +760,340 @@
     private IEnumerable<LoaRule> _displayedLoaRules = Enumerable.Empty<LoaRule>();
     private bool _showRwRoutesLoading;
     private bool _isRwRoutesError;
+    private bool _showIndividualFlights = false;
+    private bool _showInfrequentRoutes = false;
+
+    // Advanced Route Lookup state
+    private bool _showAdvancedLookup = false;
+    private bool _advLoading = false;
+    private string? _advError;
+    private List<FlightPlanSearchResult>? _advResults;
+    private readonly AdvancedLookupForm _advForm = new();
+
+    // Display-count slider: client-side limit on how many of the fetched results
+    // are shown (the query itself always uses the service's default limit)
+    private int _advDisplayCount = 10;
+
+    private int AdvSliderMax
+    {
+        get
+        {
+            var count = Math.Min(_advResults?.Count ?? 0, 100);
+            return count % 5 == 0 ? count : count + (5 - (count % 5));
+        }
+    }
+
+    private IEnumerable<FlightPlanSearchResult> AdvDisplayedResults =>
+        _advResults?.Take(Math.Max(_advDisplayCount, 5)) ?? Enumerable.Empty<FlightPlanSearchResult>();
+
+    // Turns a raw FAA route string like
+    //   "KMIA.NNOCE2.URSUS.UL780.TORIL.UL780.TRU.UV1.ATATU.ATATU4.SPJC/0955"
+    // into "NNOCE2 URSUS UL780 TORIL UL780 TRU UV1 ATATU ATATU4":
+    // dot runs (".", "..") become single spaces, the leading origin and trailing
+    // destination tokens are stripped, and any "/HHMM" ETE suffix is dropped.
+    // Used for both display and copy so they always match.
+    private static string FormatSearchRoute(string route, string? orig, string? dest)
+    {
+        if (string.IsNullOrWhiteSpace(route)) return string.Empty;
+
+        var cleaned = Regex.Replace(route, @"\.+", " ").Trim();
+        var tokens = cleaned.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToList();
+
+        if (tokens.Count > 0 && !string.IsNullOrWhiteSpace(orig)
+                             && tokens[0].Equals(orig, StringComparison.OrdinalIgnoreCase))
+        {
+            tokens.RemoveAt(0);
+        }
+
+        // Some filings carry a stray "/" element after the origin (e.g.
+        // "KSFO./.ZEUSS.VIICE2..."), which would otherwise format as
+        // "/ ZEUSS VIICE2" -- drop slash-only tokens and leading slashes
+        while (tokens.Count > 0 && tokens[0].TrimStart('/').Length == 0)
+        {
+            tokens.RemoveAt(0);
+        }
+        if (tokens.Count > 0 && tokens[0].StartsWith('/'))
+        {
+            tokens[0] = tokens[0].TrimStart('/');
+        }
+
+        if (tokens.Count > 0)
+        {
+            var last = tokens[^1];
+            var slashIdx = last.IndexOf('/');
+            var lastBase = slashIdx >= 0 ? last[..slashIdx] : last;
+
+            if (!string.IsNullOrWhiteSpace(dest) && lastBase.Equals(dest, StringComparison.OrdinalIgnoreCase))
+            {
+                tokens.RemoveAt(tokens.Count - 1);
+            }
+            else if (slashIdx >= 0)
+            {
+                // Not the destination, but still carries a "/HHMM" suffix -- drop it
+                tokens[^1] = lastBase;
+            }
+        }
+
+        return string.Join(' ', tokens);
+    }
+
+    private class AdvancedLookupForm
+    {
+        public string Origin { get; set; } = "";
+        public string Destination { get; set; } = "";
+        public string Waypoint { get; set; } = "";
+    }
+
+    private async Task AdvancedSearchSubmit()
+    {
+        // Local IDs (SFO) are normalized to ICAO (KSFO); the search API only
+        // matches on ICAO identifiers
+        var dep = NormalizeAirportCode(_advForm.Origin);
+        var arr = NormalizeAirportCode(_advForm.Destination);
+        var wpt = _advForm.Waypoint.Trim().ToUpper();
+
+        if (string.IsNullOrWhiteSpace(dep) && string.IsNullOrWhiteSpace(arr) && string.IsNullOrWhiteSpace(wpt))
+        {
+            _advResults = null;
+            _advError = "Enter an origin, destination, and/or waypoint.";
+            return;
+        }
+
+        _advError = null;
+        _advLoading = true;
+        try
+        {
+            _advResults = await CskoRouteService.SearchFlightPlansAsync(
+                string.IsNullOrWhiteSpace(dep) ? null : dep,
+                string.IsNullOrWhiteSpace(arr) ? null : arr,
+                string.IsNullOrWhiteSpace(wpt) ? null : wpt);
+
+            // Slider starts fully open (all results, capped at 100); the user can
+            // then drag it down to trim the list
+            _advDisplayCount = Math.Min(AdvSliderMax, 10);
+
+            // Don't scroll here: the results haven't rendered yet, so the page may
+            // not be tall enough for the section to reach the top. OnAfterRenderAsync
+            // performs the scroll once the new rows are in the DOM.
+            _advScrollPending = true;
+        }
+        catch (Exception)
+        {
+            _advResults = null;
+            _advError = "Error searching flight plans.";
+        }
+
+        _advLoading = false;
+    }
+
+    private async Task OnAdvSliderChanged()
+    {
+        // Route through the same post-render scroll as search results, since
+        // moving the slider also changes the section's height before the DOM updates
+        _advScrollPending = true;
+        await Task.CompletedTask;
+    }
+
+    private bool _advScrollPending;
+
+    // Pins the Advanced Route Lookup section to the top of the viewport. Invoked
+    // via window.eval so no site-wide script changes are needed; scrolling is
+    // cosmetic, so any JS failure (e.g. a strict CSP blocking eval) is swallowed.
+    private async Task ScrollAdvancedIntoViewAsync()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("eval",
+                "document.getElementById('advanced-route-lookup')?.scrollIntoView({behavior:'smooth',block:'start'})");
+        }
+        catch
+        {
+            // non-critical
+        }
+    }
+
+    private IEnumerable<FlightRouteSummary> GetFilteredRwRoutes()
+    {
+        if (_displayedRwRoutes is null) return Enumerable.Empty<FlightRouteSummary>();
+
+        var allRoutes = _displayedRwRoutes.FlightRouteSummaries;
+        if (_showInfrequentRoutes) return allRoutes;
+
+        var totalFlights = allRoutes.Sum(s => s.RouteFrequency);
+        if (totalFlights == 0) return Enumerable.Empty<FlightRouteSummary>();
+
+        // Step 1: All routes > 5%
+        var routesOver5Pct = allRoutes
+            .Where(s => (double)s.RouteFrequency / totalFlights > 0.05)
+            .ToList();
+
+        // Step 2: If less than 5 routes, add candidates that are > 1% and frequency >= 5
+        if (routesOver5Pct.Count < 5)
+        {
+            var candidates = allRoutes
+                .Where(s => (double)s.RouteFrequency / totalFlights > 0.01 && s.RouteFrequency >= 5)
+                .OrderByDescending(s => s.RouteFrequency)
+                .ToList();
+
+            if (!candidates.Any()) return routesOver5Pct;
+
+            // Determine minimum frequency to reach at least 5 routes while keeping ties
+            var targetIndex = Math.Min(4, candidates.Count - 1);
+            var minFreqCutoff = candidates[targetIndex].RouteFrequency;
+
+            return candidates.Where(s => s.RouteFrequency >= minFreqCutoff);
+        }
+
+        return routesOver5Pct;
+    }
+
+    private int InfrequentRouteCount
+    {
+        get
+        {
+            if (_displayedRwRoutes is null) return 0;
+            var total = _displayedRwRoutes.FlightRouteSummaries.Count();
+            var visible = GetFilteredRwRoutes().Count();
+            return total - visible;
+        }
+    }
+
     private IJSObjectReference? _storage;
+
+    // CDR state variables
+    private bool _showCdrs = false;
+    private bool _loaAfterRwRoutes = false;
+    private bool _isCdrLoading = false;
+    private bool _cdrError = false;
+    private bool _showValidDestinations = false;
+    private string _lastSearchedOrigin = "";
+    private string _lastSearchedDest = "";
+    private List<CdrRecord> _allCdrs = new();
+
+    // ---- Shared CDR database cache -------------------------------------------
+    // These are STATIC: one cache for the whole server process, shared by every
+    // user/circuit. The FAA database is downloaded at most once per refresh
+    // cycle regardless of how many people use the tool.
+    //
+    // Refresh rule: the database is considered fresh if it was downloaded at or
+    // after the most recent 0901 UTC boundary. So a copy fetched at 0400Z is
+    // refreshed when someone uses the tool at 1000Z (picking up AIRAC/database
+    // cycle updates published around 0900Z), but a copy fetched at 1000Z serves
+    // everyone until 0901Z the next day -- on average one FAA hit per day.
+    private static readonly SemaphoreSlim CdrFetchLock = new(1, 1);
+    private static readonly TimeSpan CdrRetryBackoff = TimeSpan.FromHours(12);
+    private static List<CdrRecord> _sharedCdrs = new();
+    private static DateTime _cdrLastFetchUtc = DateTime.MinValue;
+    private static DateTime _cdrLastAttemptUtc = DateTime.MinValue;
+
+    private static DateTime LatestCdrRefreshBoundary(DateTime nowUtc)
+    {
+        var todayBoundary = nowUtc.Date.AddHours(9).AddMinutes(1); // 0901Z
+        return nowUtc >= todayBoundary ? todayBoundary : todayBoundary.AddDays(-1);
+    }
+
+    private static bool IsCdrCacheFresh(DateTime nowUtc) =>
+        _sharedCdrs.Count > 0 && _cdrLastFetchUtc >= LatestCdrRefreshBoundary(nowUtc);
+
+    private async Task<List<CdrRecord>> GetCdrDatabaseAsync()
+    {
+        if (IsCdrCacheFresh(DateTime.UtcNow))
+        {
+            return _sharedCdrs;
+        }
+
+        await CdrFetchLock.WaitAsync();
+        try
+        {
+            // Re-check inside the lock: another circuit may have refreshed while we waited
+            var now = DateTime.UtcNow;
+            if (IsCdrCacheFresh(now))
+            {
+                return _sharedCdrs;
+            }
+
+            // A recent failed attempt backs off rather than hammering FAA;
+            // serve the stale copy if we have one
+            if (now - _cdrLastAttemptUtc < CdrRetryBackoff)
+            {
+                if (_sharedCdrs.Count > 0) return _sharedCdrs;
+                throw new InvalidOperationException("CDR database fetch recently failed; backing off.");
+            }
+
+            _cdrLastAttemptUtc = now;
+            try
+            {
+                var csvData = await Http.GetStringAsync("https://www.fly.faa.gov/rmt/data_file/codedswap_db.csv");
+                var parsed = ParseCdrCsv(csvData);
+                if (parsed.Count > 0)
+                {
+                    _sharedCdrs = parsed;
+                    _cdrLastFetchUtc = now;
+                }
+                return _sharedCdrs.Count > 0 ? _sharedCdrs : parsed;
+            }
+            catch when (_sharedCdrs.Count > 0)
+            {
+                // Refresh failed but we have an older copy -- serve stale rather
+                // than erroring; next attempt happens after the backoff window
+                return _sharedCdrs;
+            }
+        }
+        finally
+        {
+            CdrFetchLock.Release();
+        }
+    }
+
+    // Fired on page load so the shared cache is (re)warmed once per cycle even
+    // before anyone searches; errors are swallowed here and surface on search
+    private async Task WarmCdrCacheAsync()
+    {
+        try
+        {
+            await GetCdrDatabaseAsync();
+        }
+        catch
+        {
+            // ignore -- FetchAndFilterCdrs reports errors to the user when relevant
+        }
+    }
+    // --------------------------------------------------------------------------
+    private List<CdrRecord> _displayedCdrs = new();
+    private List<string> _validDestinations = new();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // Deferred scroll for the Advanced Route Lookup section: requested by an
+        // event handler, executed here so the newly rendered rows are already in
+        // the DOM and the page is tall enough to scroll the section to the top
+        if (_advScrollPending)
+        {
+            _advScrollPending = false;
+            await ScrollAdvancedIntoViewAsync();
+        }
+
         if (firstRender)
         {
             _storage = await Js.InvokeAsync<IJSObjectReference>("import", "./scripts/storage.js");
+
+            // Warm the shared CDR cache in the background on page load (downloads
+            // at most once per 0901Z cycle server-wide; instant no-op otherwise)
+            _ = WarmCdrCacheAsync();
+
+            // Restore persisted CDR toggle before any search renders results
+            var storedShowCdrs = await _storage.InvokeAsync<bool?>("get", ShowCdrsStorageKey);
+            if (storedShowCdrs is not null)
+            {
+                _showCdrs = storedShowCdrs.Value;
+            }
+
+            var storedLoaAfter = await _storage.InvokeAsync<bool?>("get", LoaAfterRwRoutesStorageKey);
+            if (storedLoaAfter is not null)
+            {
+                _loaAfterRwRoutes = storedLoaAfter.Value;
+            }
+
             if (!string.IsNullOrWhiteSpace(QueryDeparture) && !string.IsNullOrWhiteSpace(QueryDestination))
             {
                 _routeForm.DepartureId = QueryDeparture;
@@ -205,12 +1118,14 @@
 
     private class RouteForm
     {
-        [Required]
-        [StringLength(4, ErrorMessage = "ID cannot exceed 4 characters.")]
+        [Display(Name = "Origin")]
+        [Required(ErrorMessage = "Please enter an origin airport.")]
+        [StringLength(4, ErrorMessage = "Origin cannot exceed 4 characters.")]
         public string DepartureId { get; set; } = "";
 
-        [Required]
-        [StringLength(4, ErrorMessage = "ID cannot exceed 4 characters.")]
+        [Display(Name = "Destination")]
+        [Required(ErrorMessage = "Please enter a destination airport.")]
+        [StringLength(4, ErrorMessage = "Destination cannot exceed 4 characters.")]
         public string ArrivalId { get; set; } = "";
     }
 
@@ -221,6 +1136,12 @@
 
         var arrivalIcao = IdToIcaoId(_routeForm.ArrivalId);
         var arrivalLocal = IdToLocalId(_routeForm.ArrivalId);
+
+        // Process CDR search if enabled or initialized
+        _lastSearchedOrigin = NormalizeAirportCode(_routeForm.DepartureId);
+        _lastSearchedDest = NormalizeAirportCode(_routeForm.ArrivalId);
+
+        await FetchAndFilterCdrs(_lastSearchedOrigin, _lastSearchedDest);
 
         // Don't need null check here because Equals can take null
         _displayedAliasRouteRules = AliasRouteRules.GetAllRules()
@@ -236,7 +1157,7 @@
             _showRwRoutesLoading = true;
             try
             {
-                _displayedRwRoutes = await CskoRouteService.FetchRoutesAsync(departureIcao, arrivalIcao);
+                _displayedRwRoutes = await CskoRouteService.FetchRoutesAsync(departureIcao, arrivalIcao, RwRouteLookback);
                 _isRwRoutesError = false;
             }
             catch (Exception)
@@ -255,6 +1176,259 @@
                 replace: true);
         }
     }
+
+    private string NormalizeAirportCode(string id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return "";
+        var code = id.Trim().ToUpper();
+        if (code.Length == 3 && code.All(char.IsLetter))
+        {
+            code = "K" + code;
+        }
+        return code;
+    }
+
+    private async Task FetchAndFilterCdrs(string orig, string dest)
+    {
+        if (string.IsNullOrWhiteSpace(orig)) return;
+
+        try
+        {
+            _isCdrLoading = true;
+            _cdrError = false;
+
+            // Served from the shared server-wide cache; FAA is only contacted
+            // if the cache is stale for the current 0901Z cycle
+            _allCdrs = await GetCdrDatabaseAsync();
+
+            var originCdrs = _allCdrs.Where(c => c.Orig.Equals(orig, StringComparison.OrdinalIgnoreCase)).ToList();
+
+            var filtered = string.IsNullOrWhiteSpace(dest)
+                ? originCdrs
+                : originCdrs.Where(c => c.Dest.Equals(dest, StringComparison.OrdinalIgnoreCase));
+
+            // Fixed sort: CoordReq "N" first (false sorts before true), then Route Code
+            _displayedCdrs = filtered
+                .OrderBy(c => c.CoordReq.Equals("Y", StringComparison.OrdinalIgnoreCase))
+                .ThenBy(c => c.RCode, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            // Generate unique destinations for origin sorted: K-prefixed codes first, then alphabetical
+            _validDestinations = originCdrs
+                .Select(c => c.Dest)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderByDescending(d => d.StartsWith("K", StringComparison.OrdinalIgnoreCase))
+                .ThenBy(d => d)
+                .ToList();
+        }
+        catch (Exception)
+        {
+            _cdrError = true;
+        }
+        finally
+        {
+            _isCdrLoading = false;
+        }
+    }
+
+    private List<CdrRecord> ParseCdrCsv(string csvContent)
+    {
+        var records = new List<CdrRecord>();
+        using var reader = new System.IO.StringReader(csvContent);
+        string? line;
+        bool isFirstLine = true;
+
+        while ((line = reader.ReadLine()) != null)
+        {
+            if (string.IsNullOrWhiteSpace(line)) continue;
+            if (isFirstLine)
+            {
+                isFirstLine = false; // Skip CSV header line
+                continue;
+            }
+
+            var parts = line.Split(',');
+            if (parts.Length >= 9)
+            {
+                records.Add(new CdrRecord(
+                    RCode: parts[0].Trim(),
+                    Orig: parts[1].Trim(),
+                    Dest: parts[2].Trim(),
+                    DepFix: parts[3].Trim(),
+                    RouteString: parts[4].Trim(),
+                    CoordReq: parts[8].Trim()
+                ));
+            }
+        }
+
+        return records;
+    }
+
+    // Splits standard 8-char CDR route codes into (prefix, suffix) to bold the last 2 characters.
+    // Non-standard codes (shorter than 7 chars) pass through with a null suffix.
+    private static (string Prefix, string? Suffix) GetSplitRouteCode(string rCode)
+    {
+        if (string.IsNullOrEmpty(rCode) || rCode.Length <= 6)
+        {
+            return (rCode, null);
+        }
+        return (rCode[..^2], rCode[^2..]);
+    }
+
+    // LOA routes copy with the shorthand normalized for flight plans:
+    // " STAR" (whole word) becomes "#", and runs of "."/".." become single spaces.
+    // e.g. "..MCKEY.LEENA STAR" copies as "MCKEY LEENA#"
+    // TEC/AAR/ADR route strings pack multiple options into one line, e.g.
+    //   "[SFOW] +TRUKN2 ... 100/ | [SFOE] +CIITY3 ..."          (| separates options,
+    //                                                            [SFOW] labels a config)
+    //   "+.CIITY3.ORRCA..+ [+..BARTN..ORRCA.ORRCA1.+] [...]"    (bracketed full routes
+    //                                                            are alternates)
+    // Short bracketed tokens with no route punctuation ("[SFOW]") are treated as config
+    // labels and kept on the following route's line; bracketed tokens containing route
+    // punctuation are standalone alternates, shown and copied without the brackets.
+    private record TecRouteOption(string Display, string CopyText);
+
+    // Copying a TEC option strips the notation: "+", "/" and runs of "."/".."
+    // become single spaces, runway parentheticals like "(28)" are dropped, and
+    // trailing altitude tokens ("100/", "060") are removed entirely.
+    // e.g. "+.GAPP7.SFO..REBAS..SAC..TARVR..SPOON..+" -> "GAPP7 SFO REBAS SAC TARVR SPOON"
+    //      "+TRUKN2 TRUKN FEVTA FEVTA1+ 100/" -> "TRUKN2 TRUKN FEVTA FEVTA1"
+    private static string FormatTecRouteForCopy(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+
+        var result = text.Replace('+', ' ').Replace('/', ' ').Replace('"', ' ')
+            .Replace('[', ' ').Replace(']', ' ');
+        result = Regex.Replace(result, @"\([0-9LRC]+\)", " ");
+        result = Regex.Replace(result, @"\.+", " ");
+        result = Regex.Replace(result, @"\s+", " ").Trim();
+        // Trailing all-digit tokens are altitudes, not fixes (fixes/airways always
+        // contain letters) -- drop them from the copied route
+        result = Regex.Replace(result, @"(\s\d{2,3})+$", "");
+        return result.Trim();
+    }
+
+    // "SID1(rwy)\SID2(rwy)" is shorthand for runway-dependent alternatives:
+    // "+SFO4(1)\GAPP7(28) OAK V6 SAC+ 060" expands to
+    //   "+SFO4(1) OAK V6 SAC+ 060"  and  "+GAPP7(28) OAK V6 SAC+ 060"
+    private static IEnumerable<string> ExpandBackslashAlternatives(string text)
+    {
+        var tokens = text.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var idx = Array.FindIndex(tokens, t => t.Contains('\\'));
+        if (idx < 0)
+        {
+            yield return text;
+            yield break;
+        }
+
+        var alternatives = tokens[idx].Split('\\', StringSplitOptions.RemoveEmptyEntries);
+        var plusPrefix = alternatives.Length > 0 && alternatives[0].StartsWith('+') ? "+" : "";
+
+        foreach (var alt in alternatives)
+        {
+            var replaced = (string[])tokens.Clone();
+            replaced[idx] = alt.StartsWith('+') ? alt : plusPrefix + alt;
+
+            // Recurse in case a segment carries more than one alternative token
+            foreach (var expanded in ExpandBackslashAlternatives(string.Join(' ', replaced)))
+            {
+                yield return expanded;
+            }
+        }
+    }
+
+    private static List<TecRouteOption> SplitTecRouteOptions(string route)
+    {
+        var options = new List<TecRouteOption>();
+        if (string.IsNullOrWhiteSpace(route)) return options;
+
+        // Scrub known noise from the alias source data: stray quotes, "$route"
+        // terminators glued to route text, and leaked ".am rte" prefixes
+        route = route.Replace("\"", " ").Replace("$route", " ");
+        route = Regex.Replace(route, @"\.?\bam rte\b\s*", " ");
+
+        foreach (var segment in route.Split('|'))
+        {
+            if (string.IsNullOrWhiteSpace(segment)) continue;
+
+            string? pendingLabel = null;
+            var segmentStart = options.Count;
+            var parts = Regex.Split(segment, @"(\[[^\]]*\])")
+                .Select(p => p.Trim())
+                .Where(p => p.Length > 0);
+
+            foreach (var part in parts)
+            {
+                if (part.StartsWith('[') && part.EndsWith(']'))
+                {
+                    var inner = part[1..^1].Trim();
+                    if (Regex.IsMatch(inner, @"^[A-Z0-9]{1,6}$"))
+                    {
+                        // Config label like [SFOW]/[SFOE]. If route text follows it,
+                        // it prefixes that text; if the segment ends first, it trails
+                        // the previous option (handled after the loop).
+                        pendingLabel = inner;
+                    }
+                    else
+                    {
+                        // bracketed alternate route: display keeps the brackets
+                        // (they mark it as an alternate); copy strips everything
+                        foreach (var variant in ExpandBackslashAlternatives(inner))
+                        {
+                            options.Add(new TecRouteOption($"[{variant}]", FormatTecRouteForCopy(variant)));
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var variant in ExpandBackslashAlternatives(part))
+                    {
+                        var display = pendingLabel is null ? variant : $"[{pendingLabel}] {variant}";
+                        options.Add(new TecRouteOption(display, FormatTecRouteForCopy(variant)));
+                    }
+                    pendingLabel = null;
+                }
+            }
+
+            // Trailing label, e.g. "[+..SAU..OAK..+][SFOE]": applies to the option it follows
+            if (pendingLabel is not null && options.Count > segmentStart)
+            {
+                var last = options[^1];
+                options[^1] = last with { Display = $"{last.Display} [{pendingLabel}]" };
+            }
+        }
+
+        return options;
+    }
+
+    private static string FormatLoaRouteForCopy(string route)
+    {
+        if (string.IsNullOrWhiteSpace(route)) return string.Empty;
+
+        var result = Regex.Replace(route, @"\s+STAR\b", "#");
+        result = Regex.Replace(result, @"\.+", " ");
+        return Regex.Replace(result, @"\s+", " ").Trim();
+    }
+
+    private static string FormatRouteString(string rawRoute, string orig, string dest)
+    {
+        if (string.IsNullOrWhiteSpace(rawRoute)) return string.Empty;
+
+        // Strips origin from start and destination from end of route string
+        var cleaned = Regex.Replace(rawRoute, $@"^{Regex.Escape(orig)}\s+", "", RegexOptions.IgnoreCase);
+        cleaned = Regex.Replace(cleaned, $@"\s+{Regex.Escape(dest)}$", "", RegexOptions.IgnoreCase);
+        return cleaned.Trim();
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            await Js.InvokeVoidAsync("navigator.clipboard.writeText", text);
+        }
+    }
+
+    private record CdrRecord(string RCode, string Orig, string Dest, string DepFix, string RouteString, string CoordReq);
 
     private string? IdToIcaoId(string id)
     {
@@ -284,8 +1458,38 @@
         return alt >= 18000 ? $"FL{alt.ToString()[..3]}" : alt.ToString();
     }
 
+    private async Task PersistShowCdrs()
+    {
+        if (_storage is not null)
+        {
+            await _storage.InvokeVoidAsync("set", ShowCdrsStorageKey, _showCdrs);
+        }
+    }
+
+    private async Task ToggleLoaPosition()
+    {
+        _loaAfterRwRoutes = !_loaAfterRwRoutes;
+        if (_storage is not null)
+        {
+            await _storage.InvokeVoidAsync("set", LoaAfterRwRoutesStorageKey, _loaAfterRwRoutes);
+        }
+    }
+
+    // Double-clicking a Valid CDR Destination pill sets it as the arrival and re-searches
+    private async Task SelectCdrDestination(string dest)
+    {
+        _routeForm.ArrivalId = dest;
+        await RouteSubmit();
+    }
+
     private record struct SavedAirportPairRoutes(string DepartureId, string ArrivalId);
 
     private const string SavedAirportPairRoutesStorageKey = "SavedAirportPairRoutes";
 
+    private const string ShowCdrsStorageKey = "ShowCdrs";
+
+    private const string LoaAfterRwRoutesStorageKey = "LoaAfterRwRoutes";
+
+    // How far back Real World Routes data is pulled (~6 months)
+    private static readonly TimeSpan RwRouteLookback = TimeSpan.FromDays(183);
 }
