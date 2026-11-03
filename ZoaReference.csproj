@@ -25,6 +25,7 @@
         <PackageReference Include="PdfPig" Version="0.1.13" />
         <PackageReference Include="PDFsharp" Version="6.2.4" />
         <PackageReference Include="Sentry.AspNetCore" Version="5.11.2" />
+        <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.2" />
     </ItemGroup>
 
     <Target Name="Tailwind" BeforeTargets="Build">
